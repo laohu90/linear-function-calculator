@@ -163,6 +163,10 @@ export interface CalculationResult {
   perpendicularSlope?: Fraction;
   triangleAreaWithAxes?: number;
 
+  // Parallel & Perpendicular through Midpoint M
+  parallelThroughOrigin?: string;
+  perpendicularThroughMidpoint?: string;
+
   // Properties
   monotonicity: 'increasing' | 'decreasing' | 'constant' | 'none';
   quadrants: number[];
@@ -288,14 +292,14 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
       specialType: 'degenerate',
       isValid: false,
       errorMessage: lang === 'zh'
-        ? '两点坐标完全相同，过单点有无穷多条直线，无法确定唯一直线。'
-        : 'Two points are identical; infinite lines pass through a single point.',
+        ? '两点坐标完全重合，过单点有无穷多条直线，无法确定唯一直线。请修改其中一个点的坐标。'
+        : 'Point A and Point B are identical; infinite lines pass through a single point. Please modify one coordinate.',
       hasSlope: false,
       hasYIntercept: false,
       hasXIntercept: false,
       bText: lang === 'zh' ? '无' : 'None',
       xInterceptText: lang === 'zh' ? '无' : 'None',
-      slopeInterceptEq: lang === 'zh' ? '无法确定' : 'Undefined',
+      slopeInterceptEq: lang === 'zh' ? '两点重合，解析式无法确定' : 'Identical points, line undefined',
       slopeInterceptEqLatex: '\\text{Undefined}',
       generalEq: 'N/A',
       pointSlopeEq: 'N/A',
@@ -306,8 +310,18 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
       inclinationAngleRad: 0,
       monotonicity: 'none',
       quadrants: [],
-      stepsZh: ['点 A 与点 B 坐标重合，无法唯一确定一次函数解析式。请修改其中一个点的坐标。'],
-      stepsEn: ['Point A and Point B are identical. A unique line cannot be determined. Please adjust one of the points.']
+      stepsZh: [
+        '【提示：两点坐标重合】',
+        `  点 A(${p1.x}, ${p1.y}) 与 点 B(${p2.x}, ${p2.y}) 坐标完全相同。`,
+        '  由公理可知：过两点确定一条直线；而过单点存在无穷多条直线。',
+        '  请调整任意一点坐标以开始计算。'
+      ],
+      stepsEn: [
+        '[Notice: Points Coincide]',
+        `  Point A(${p1.x}, ${p1.y}) and Point B(${p2.x}, ${p2.y}) are identical.`,
+        '  Two distinct points determine a unique line; an infinite number of lines pass through a single point.',
+        '  Please adjust one of the points to begin.'
+      ]
     };
   }
 
@@ -368,6 +382,7 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
       inclinationAngleRad: Math.PI / 2,
       monotonicity: 'none',
       quadrants: xVal > 0 ? [1, 4] : xVal < 0 ? [2, 3] : [1, 2, 3, 4],
+      perpendicularThroughMidpoint: `y = ${formatNum(midpoint.y)} (水平垂直平分线)`,
       stepsZh: [
         `【步骤一：观察坐标特征】`,
         `  x₁ = ${p1.x}，x₂ = ${p2.x}，两点横坐标相等 (x₁ = x₂)。`,
@@ -452,13 +467,28 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
     perpFrac = toFraction(-1 / kVal);
   }
 
-  const y1Part = p1.y >= 0 ? `y - ${p1.y}` : `y + ${Math.abs(p1.y)}`;
-  const x1Part = p1.x >= 0 ? `x - ${p1.x}` : `x + ${Math.abs(p1.x)}`;
-  const pointSlopeEq = `${y1Part} = ${kFrac.text}(${x1Part})`;
+  // Refined point-slope format: avoid redundant y - 0 or x - 0
+  const y1Part = p1.y === 0 ? 'y' : p1.y > 0 ? `y - ${p1.y}` : `y + ${Math.abs(p1.y)}`;
+  const x1Part = p1.x === 0 ? 'x' : p1.x > 0 ? `(x - ${p1.x})` : `(x + ${Math.abs(p1.x)})`;
+  const pointSlopeEq = p1.x === 0 ? `${y1Part} = ${kFrac.text}x` : `${y1Part} = ${kFrac.text}${x1Part}`;
 
   let twoInterceptEq: string | undefined;
   if (xIntVal !== undefined && Math.abs(xIntVal) > 1e-9 && Math.abs(bVal) > 1e-9) {
     twoInterceptEq = `x / (${xIntFrac?.text}) + y / (${bFrac.text}) = 1`;
+  }
+
+  // Parallel line through Origin
+  const parallelThroughOrigin = Math.abs(kVal) < 1e-9 ? 'y = 0' : `y = ${kFrac.text === '1' ? 'x' : kFrac.text === '-1' ? '-x' : `${kFrac.text}x`}`;
+
+  // Perpendicular line through Midpoint (Perpendicular Bisector)
+  let perpendicularThroughMidpoint: string | undefined;
+  if (perpFrac) {
+    const bPerp = midpoint.y - (-1 / kVal) * midpoint.x;
+    const bPerpFrac = toFraction(bPerp);
+    perpendicularThroughMidpoint = formatSlopeIntercept(perpFrac, bPerpFrac).plain;
+  } else if (Math.abs(kVal) < 1e-9) {
+    // Original was horizontal, perp is vertical through midpoint
+    perpendicularThroughMidpoint = `x = ${formatNum(midpoint.x)}`;
   }
 
   let specialType: LineSpecialType = 'general';
@@ -561,6 +591,8 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
     inclinationAngleRad: rad,
     perpendicularSlope: perpFrac,
     triangleAreaWithAxes: triangleArea,
+    parallelThroughOrigin,
+    perpendicularThroughMidpoint,
     monotonicity,
     quadrants: quads,
     stepsZh,

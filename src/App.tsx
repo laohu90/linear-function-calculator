@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   calculateFromTwoPoints,
   Point,
@@ -27,41 +27,49 @@ import {
   ChevronUp,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  ArrowRight,
+  GitCommit
 } from 'lucide-react';
 
 const PRESET_EXAMPLES = [
   {
+    id: 0,
     labelZh: '经典例题1: (1, 3) 与 (3, 7) [增函数]',
     labelEn: 'Example 1: (1, 3) and (3, 7) [Increasing]',
     p1: { x: 1, y: 3 },
     p2: { x: 3, y: 7 }
   },
   {
+    id: 1,
     labelZh: '经典例题2: (-2, 5) 与 (4, -1) [减函数]',
     labelEn: 'Example 2: (-2, 5) and (4, -1) [Decreasing]',
     p1: { x: -2, y: 5 },
     p2: { x: 4, y: -1 }
   },
   {
+    id: 2,
     labelZh: '经典例题3: (0, 0) 与 (2, 6) [正比例函数]',
     labelEn: 'Example 3: (0, 0) and (2, 6) [Direct Proportion]',
     p1: { x: 0, y: 0 },
     p2: { x: 2, y: 6 }
   },
   {
+    id: 3,
     labelZh: '经典例题4: (1, 2) 与 (4, 4) [分数斜率 2/3]',
     labelEn: 'Example 4: (1, 2) and (4, 4) [Fraction Slope 2/3]',
     p1: { x: 1, y: 2 },
     p2: { x: 4, y: 4 }
   },
   {
+    id: 4,
     labelZh: '特殊线型5: (-3, 4) 与 (5, 4) [水平线 k=0]',
     labelEn: 'Example 5: (-3, 4) and (5, 4) [Horizontal Line k=0]',
     p1: { x: -3, y: 4 },
     p2: { x: 5, y: 4 }
   },
   {
+    id: 5,
     labelZh: '特殊线型6: (3, -2) 与 (3, 5) [垂直线 k不存在]',
     labelEn: 'Example 6: (3, -2) and (3, 5) [Vertical Line Undefined]',
     p1: { x: 3, y: -2 },
@@ -82,14 +90,18 @@ export default function App() {
   const [strX2, setStrX2] = useState<string>('4');
   const [strY2, setStrY2] = useState<string>('8');
 
-  // Sync string inputs when p1 or p2 are changed externally (e.g. dragging on canvas)
-  const syncInputsFromPoints = (pt1: Point, pt2: Point) => {
+  // Selected preset tracking (-1 means custom)
+  const [selectedPresetId, setSelectedPresetId] = useState<number>(-1);
+
+  // Sync inputs from point updates
+  const syncInputsFromPoints = (pt1: Point, pt2: Point, presetId = -1) => {
     setP1(pt1);
     setP2(pt2);
     setStrX1(pt1.x.toString());
     setStrY1(pt1.y.toString());
     setStrX2(pt2.x.toString());
     setStrY2(pt2.y.toString());
+    setSelectedPresetId(presetId);
   };
 
   // Evaluator inputs
@@ -113,7 +125,7 @@ export default function App() {
   };
 
   const handleSwap = () => {
-    syncInputsFromPoints({ ...p2 }, { ...p1 });
+    syncInputsFromPoints({ ...p2 }, { ...p1 }, -1);
   };
 
   const handleRandom = () => {
@@ -123,11 +135,11 @@ export default function App() {
     let rx2 = rand();
     let ry2 = rand();
     if (rx1 === rx2 && ry1 === ry2) rx2 += 2;
-    syncInputsFromPoints({ x: rx1, y: ry1 }, { x: rx2, y: ry2 });
+    syncInputsFromPoints({ x: rx1, y: ry1 }, { x: rx2, y: ry2 }, -1);
   };
 
-  // Text input handlers allowing '-' and '.'
   const handleInputChange = (field: 'x1' | 'y1' | 'x2' | 'y2', val: string) => {
+    setSelectedPresetId(-1);
     if (field === 'x1') {
       setStrX1(val);
       const parsed = parseFloat(val);
@@ -145,6 +157,28 @@ export default function App() {
       const parsed = parseFloat(val);
       if (!isNaN(parsed)) setP2(prev => ({ ...prev, y: parsed }));
     }
+  };
+
+  const handleInputBlur = (field: 'x1' | 'y1' | 'x2' | 'y2') => {
+    if (field === 'x1') {
+      if (isNaN(parseFloat(strX1))) setStrX1(p1.x.toString());
+    } else if (field === 'y1') {
+      if (isNaN(parseFloat(strY1))) setStrY1(p1.y.toString());
+    } else if (field === 'x2') {
+      if (isNaN(parseFloat(strX2))) setStrX2(p2.x.toString());
+    } else if (field === 'y2') {
+      if (isNaN(parseFloat(strY2))) setStrY2(p2.y.toString());
+    }
+  };
+
+  // Quick feed into evaluator
+  const feedIntoEvaluator = (val: number, type: 'x' | 'y') => {
+    if (type === 'x') {
+      setEvalX(formatNum(val));
+    } else {
+      setEvalY(formatNum(val));
+    }
+    setSubView('evaluator');
   };
 
   const evaluatedY = useMemo(() => {
@@ -189,6 +223,7 @@ export default function App() {
       swapBtn: '交换 A/B',
       randomBtn: '随机生成',
       presets: '例题预设',
+      customPreset: '自定义输入',
       primaryEq: '一次函数解析式 (斜截式)',
       copyBtn: '复制解析式',
       copied: '已复制！',
@@ -209,11 +244,12 @@ export default function App() {
       tabGuide: '公式与考点归纳',
       tabFaq: '常见问题答疑',
       graphTitle: '交互式直角坐标系图像',
-      graphTip: '支持直接在画布拖拽点 A、点 B 实时更新',
+      graphTip: '支持直接在画布拖拽点 A、点 B 实时更新 (含手机触摸支持)',
       evalXLabel: '已知 x 求 y：',
       evalYLabel: '已知 y 求 x：',
       evalPrompt: '在当前求得的直线方程下快速求值：',
       evalResultBadge: '计算结果',
+      feedEvaluatorTip: '点击可快速带入求值器验证',
       footerText: '一次函数解析式生成器 · 专业数学教育与计算工具',
       sourceCode: 'GitHub 源码',
       monoInc: '递增 (k > 0)',
@@ -222,7 +258,9 @@ export default function App() {
       monoVert: '垂直线',
       quadrantPrefix: '第 ',
       quadrantSuffix: ' 象限',
-      originThrough: '过原点'
+      originThrough: '过原点',
+      auxParallelTitle: '过原点平行线 L∥',
+      auxPerpBisectorTitle: '线段垂直平分线 L⊥'
     },
     en: {
       siteTitle: 'Linear Function Calculator',
@@ -234,6 +272,7 @@ export default function App() {
       swapBtn: 'Swap',
       randomBtn: 'Random',
       presets: 'Presets',
+      customPreset: 'Custom Input',
       primaryEq: 'Slope-Intercept Form (y = mx + b)',
       copyBtn: 'Copy Equation',
       copied: 'Copied!',
@@ -254,11 +293,12 @@ export default function App() {
       tabGuide: 'Properties & Guide',
       tabFaq: 'FAQ',
       graphTitle: 'Interactive Coordinate Graph',
-      graphTip: 'Drag Point A / Point B directly on canvas to update in real time',
+      graphTip: 'Drag Point A / Point B directly on canvas (Touch supported on mobile)',
       evalXLabel: 'Given x, calculate y:',
       evalYLabel: 'Given y, calculate x:',
       evalPrompt: 'Quickly evaluate points on the current line equation:',
       evalResultBadge: 'Result',
+      feedEvaluatorTip: 'Click to test in evaluator',
       footerText: 'Linear Function & Line Equation Generator from Two Points',
       sourceCode: 'GitHub Source',
       monoInc: 'Increasing (k > 0)',
@@ -267,7 +307,9 @@ export default function App() {
       monoVert: 'Vertical Line',
       quadrantPrefix: 'Quadrants ',
       quadrantSuffix: '',
-      originThrough: 'Passes origin'
+      originThrough: 'Passes origin',
+      auxParallelTitle: 'Parallel line through origin L∥',
+      auxPerpBisectorTitle: 'Perpendicular Bisector L⊥'
     }
   }[lang];
 
@@ -304,19 +346,22 @@ export default function App() {
                 {t.presets}:
               </span>
               <select
+                value={selectedPresetId}
                 onChange={(e) => {
                   const idx = parseInt(e.target.value);
-                  if (!isNaN(idx) && PRESET_EXAMPLES[idx]) {
+                  if (idx >= 0 && PRESET_EXAMPLES[idx]) {
                     syncInputsFromPoints(
                       { ...PRESET_EXAMPLES[idx].p1 },
-                      { ...PRESET_EXAMPLES[idx].p2 }
+                      { ...PRESET_EXAMPLES[idx].p2 },
+                      idx
                     );
                   }
                 }}
                 className="bg-transparent text-xs text-slate-700 font-medium focus:outline-none cursor-pointer"
               >
-                {PRESET_EXAMPLES.map((ex, i) => (
-                  <option key={i} value={i}>
+                <option value={-1}>{t.customPreset}</option>
+                {PRESET_EXAMPLES.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
                     {lang === 'zh' ? ex.labelZh : ex.labelEn}
                   </option>
                 ))}
@@ -400,6 +445,7 @@ export default function App() {
                         type="text"
                         value={strX1}
                         onChange={(e) => handleInputChange('x1', e.target.value)}
+                        onBlur={() => handleInputBlur('x1')}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
@@ -409,6 +455,7 @@ export default function App() {
                         type="text"
                         value={strY1}
                         onChange={(e) => handleInputChange('y1', e.target.value)}
+                        onBlur={() => handleInputBlur('y1')}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
@@ -433,6 +480,7 @@ export default function App() {
                         type="text"
                         value={strX2}
                         onChange={(e) => handleInputChange('x2', e.target.value)}
+                        onBlur={() => handleInputBlur('x2')}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
                       />
                     </div>
@@ -442,6 +490,7 @@ export default function App() {
                         type="text"
                         value={strY2}
                         onChange={(e) => handleInputChange('y2', e.target.value)}
+                        onBlur={() => handleInputBlur('y2')}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
                       />
                     </div>
@@ -477,7 +526,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* 4 Core Parameter Badges */}
+              {/* 4 Core Parameter Badges with click-to-evaluate linkage */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {/* Slope k */}
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
@@ -493,7 +542,11 @@ export default function App() {
                 </div>
 
                 {/* Y-Intercept b */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div
+                  onClick={() => result.b !== undefined && feedIntoEvaluator(result.b, 'y')}
+                  title={t.feedEvaluatorTip}
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:border-amber-300 hover:bg-amber-50/30 transition-colors"
+                >
                   <span className="text-[11px] text-slate-500 block mb-0.5">{t.intercept}</span>
                   <div className="text-base font-bold text-amber-700 font-mono">
                     {result.hasYIntercept ? result.bText : (lang === 'zh' ? '无' : 'None')}
@@ -506,25 +559,39 @@ export default function App() {
                 </div>
 
                 {/* X-Intercept */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div
+                  onClick={() => result.xIntercept !== undefined && feedIntoEvaluator(result.xIntercept, 'x')}
+                  title={t.feedEvaluatorTip}
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors"
+                >
                   <span className="text-[11px] text-slate-500 block mb-0.5">{t.xInt}</span>
                   <div className="text-xs font-bold text-emerald-700 font-mono truncate">
                     {result.xInterceptPoint
                       ? `(${result.xInterceptText}, 0)`
                       : result.xInterceptText || (lang === 'zh' ? '无' : 'None')}
                   </div>
-                  <div className="text-[10px] text-slate-400">{lang === 'zh' ? '令 y = 0' : 'Set y = 0'}</div>
+                  <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                    <span>{lang === 'zh' ? '令 y = 0' : 'Set y = 0'}</span>
+                    <span className="text-emerald-600 text-[10px] font-semibold">代入 ➔</span>
+                  </div>
                 </div>
 
                 {/* Y-Intercept Point */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div
+                  onClick={() => result.b !== undefined && feedIntoEvaluator(0, 'x')}
+                  title={t.feedEvaluatorTip}
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:border-amber-300 hover:bg-amber-50/30 transition-colors"
+                >
                   <span className="text-[11px] text-slate-500 block mb-0.5">{t.yInt}</span>
                   <div className="text-xs font-bold text-amber-700 font-mono truncate">
                     {result.yInterceptPoint
                       ? `(0, ${result.bText})`
                       : result.bText || (lang === 'zh' ? '无' : 'None')}
                   </div>
-                  <div className="text-[10px] text-slate-400">{lang === 'zh' ? '令 x = 0' : 'Set x = 0'}</div>
+                  <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                    <span>{lang === 'zh' ? '令 x = 0' : 'Set x = 0'}</span>
+                    <span className="text-amber-600 text-[10px] font-semibold">代入 ➔</span>
+                  </div>
                 </div>
               </div>
 
@@ -534,7 +601,11 @@ export default function App() {
                   <span className="text-slate-400 text-[11px] block">{t.distance}</span>
                   <span className="font-mono font-semibold text-slate-800">{result.distanceExactText}</span>
                 </div>
-                <div>
+                <div
+                  onClick={() => feedIntoEvaluator(result.midpoint.x, 'x')}
+                  title={t.feedEvaluatorTip}
+                  className="cursor-pointer hover:text-indigo-600"
+                >
                   <span className="text-slate-400 text-[11px] block">{t.midpoint}</span>
                   <span className="font-mono font-semibold text-slate-800">
                     M({formatNum(result.midpoint.x)}, {formatNum(result.midpoint.y)})
@@ -578,6 +649,22 @@ export default function App() {
                   </span>
                 </div>
               </div>
+
+              {/* Auxiliary Linear Equations Card (Linkage with Geometry) */}
+              {result.isValid && (
+                <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <span className="text-slate-400">{t.pointSlopeEq}:</span>
+                    <span className="text-slate-700 font-medium">{result.pointSlopeEq}</span>
+                  </div>
+                  {result.perpendicularThroughMidpoint && (
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <span className="text-purple-600 font-semibold">{t.auxPerpBisectorTitle}:</span>
+                      <span className="text-purple-800 font-bold">{result.perpendicularThroughMidpoint}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -595,11 +682,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* Coordinate Plane Canvas */}
+            {/* Coordinate Plane Canvas with touch & snap linkage */}
             <CoordinatePlane
               result={result}
               onPointChange={(newP1, newP2) => {
-                syncInputsFromPoints(newP1, newP2);
+                syncInputsFromPoints(newP1, newP2, -1);
               }}
               lang={lang}
             />
@@ -689,12 +776,39 @@ export default function App() {
             </div>
           )}
 
-          {/* Subview 2: Point Evaluator Tool */}
+          {/* Subview 2: Point Evaluator Tool with Instant Linked Verification */}
           {subView === 'evaluator' && (
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">
-                {t.evalPrompt} <strong className="text-slate-800 font-mono">{result.slopeInterceptEq}</strong>
-              </p>
+            <div className="p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <p className="text-xs text-slate-500">
+                  {t.evalPrompt} <strong className="text-indigo-700 font-mono text-sm">{result.slopeInterceptEq}</strong>
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400">快速带入核心特征点：</span>
+                  {result.xIntercept !== undefined && (
+                    <button
+                      onClick={() => result.xIntercept !== undefined && setEvalX(formatNum(result.xIntercept))}
+                      className="px-2 py-0.5 rounded text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                    >
+                      X轴交点 x={formatNum(result.xIntercept)}
+                    </button>
+                  )}
+                  {result.b !== undefined && (
+                    <button
+                      onClick={() => setEvalX('0')}
+                      className="px-2 py-0.5 rounded text-[11px] bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      Y轴截距 x=0
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setEvalX(formatNum(result.midpoint.x))}
+                    className="px-2 py-0.5 rounded text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                  >
+                    中点 M
+                  </button>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Given x => solve y */}
