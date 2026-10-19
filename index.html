@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags & Google SEO -->
+    <title>一次函数解析式生成器 | 求一次函数计算器 - 两点求直线方程 y=kx+b (Linear Function Calculator)</title>
+    <meta name="title" content="一次函数解析式生成器 | 求一次函数计算器 - 两点求直线方程 y=kx+b (Linear Function Calculator)" />
+    <meta name="description" content="专业免费在线一次函数解析式生成器与计算器。输入两个坐标点(x1,y1)和(x2,y2)，秒出斜率k、截距b、解析式y=kx+b、一般式、坐标轴交点及交互式函数图像。支持分数精度与详细解题步骤。Find linear equation from two points with step-by-step steps and graph." />
+    <meta name="keywords" content="一次函数解析式生成器,一次函数计算器,求一次函数解析式,两点求直线方程,y=kx+b,斜率截距式,一次函数图像,linear function calculator,line equation from two points,slope intercept form calculator,y=mx+b,two point form" />
+    <meta name="author" content="Linear Function Studio" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://laohu90.github.io/linear-function-calculator/" />
+    <meta property="og:title" content="一次函数解析式生成器 | 两点求直线方程 y=kx+b 计算器" />
+    <meta property="og:description" content="输入两个坐标点，秒出斜率k、截距b、解析式与坐标轴交点。支持交互式函数图像绘制与分步解题推导。" />
+    <meta property="og:site_name" content="一次函数解析式生成器" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="一次函数解析式生成器 (Linear Function Calculator)" />
+    <meta name="twitter:description" content="输入两点坐标，秒求一次函数解析式 y=kx+b、斜率k、截距b与交点坐标。带交互式动态图像与步骤推导。" />
+
+    <!-- Canonical and Alternate Languages -->
+    <link rel="canonical" href="https://laohu90.github.io/linear-function-calculator/" />
+    <link rel="alternate" hreflang="zh" href="https://laohu90.github.io/linear-function-calculator/" />
+    <link rel="alternate" hreflang="en" href="https://laohu90.github.io/linear-function-calculator/?lang=en" />
+    <link rel="alternate" hreflang="x-default" href="https://laohu90.github.io/linear-function-calculator/" />
+
+    <!-- Google Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://laohu90.github.io/linear-function-calculator/#webapp",
+          "name": "一次函数解析式生成器 (Linear Function Calculator)",
+          "alternateName": ["求一次函数解析式计算器", "两点求直线方程计算器", "Slope-Intercept Form Calculator", "Linear Equation Generator"],
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "description": "专业免费在线一次函数解析式生成器。输入两个坐标点，秒出斜率k、截距b、解析式 y=kx+b、与坐标轴交点、中点及距离，并提供动态交互式函数图像与详细解题步骤。",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "输入两点秒求一次函数 y=kx+b 解析式",
+            "自动求斜率 k、截距 b、x轴与y轴交点",
+            "直角坐标系高保真交互图像，支持拖拽动点实时更新",
+            "提供待定系数法与斜率公式法的完整分步推导",
+            "分数与小数双重精准展示，杜绝精度丢失",
+            "中英双语一键无缝切换"
+          ]
+        },
+        {
+          "@type": "HowTo",
+          "name": "如何通过两点坐标求一次函数解析式 y = kx + b",
+          "description": "已知直线经过两点 (x1, y1) 和 (x2, y2)，通过代入法或斜率法求一次函数解析式的标准解法步骤。",
+          "step": [
+            {
+              "@type": "HowToStep",
+              "name": "计算斜率 k",
+              "text": "使用斜率公式 k = (y2 - y1) / (x2 - x1) 计算直线的斜率。"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "计算截距 b",
+              "text": "将点 (x1, y1) 代入方程 y = kx + b，得到 b = y1 - k * x1。"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "写出一次函数解析式",
+              "text": "将求得的 k 和 b 代入 y = kx + b，化简整理得出最终的解析式。"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "求与坐标轴交点",
+              "text": "令 x=0 得与 y 轴交点 (0, b)；令 y=0 得与 x 轴交点 (-b/k, 0)。"
+            }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "两点求一次函数解析式的公式是什么？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "已知两点 A(x1, y1) 和 B(x2, y2)，当 x1 ≠ x2 时，斜率 k = (y2 - y1) / (x2 - x1)，截距 b = y1 - k * x1，解析式为 y = kx + b。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "如果两点的横坐标相同 (x1 = x2) 怎么办？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "当两点的横坐标相同时，直线垂直于 x 轴（平行于 y 轴），此时斜率 k 不存在，直线方程为 x = x1，它不是一次函数，但属于垂直直线方程。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "如果两点的纵坐标相同 (y1 = y2) 怎么办？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "当两点的纵坐标相同时，斜率 k = 0，直线方程为 y = y1，这是一条平行于 x 轴的水平常数函数直线。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "什么是与坐标轴的交点？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "一次函数与 y 轴的交点坐标为 (0, b)；与 x 轴的交点坐标为 (-b/k, 0)。两条交点与原点围成一个直角三角形，面积 S = 0.5 * |-b/k| * |b|。"
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-600 selection:text-white min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

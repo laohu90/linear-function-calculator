@@ -1,0 +1,6 @@
+{
+  "name": "Project Studio",
+  "description": "智能项目开发与原型工作台，支持快速构建全栈应用与创意工具。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
