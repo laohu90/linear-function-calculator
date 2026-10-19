@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://laohu90.github.io/linear-function-calculator/sitemap.xml

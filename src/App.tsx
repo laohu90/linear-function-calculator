@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   calculateFromTwoPoints,
   Point,
@@ -28,8 +28,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  ArrowRight,
-  GitCommit
+  Search,
+  ExternalLink
 } from 'lucide-react';
 
 const PRESET_EXAMPLES = [
@@ -77,8 +77,73 @@ const PRESET_EXAMPLES = [
   }
 ];
 
+// Bilingual SEO Keywords Data for Google Indexing
+const BILINGUAL_SEO_KEYWORDS = {
+  zh: [
+    { kw: '一次函数解析式生成器', desc: '根据两点坐标秒级求 y = kx + b 解析式' },
+    { kw: '一次函数计算器', desc: '求斜率 k、截距 b、倾斜角、中点与两点距离' },
+    { kw: '求一次函数解析式', desc: '待定系数法列二元一次方程组分步详细演算' },
+    { kw: '两点求直线方程', desc: '输入任意两点 (x1, y1) 和 (x2, y2) 导出一般式与点斜式' },
+    { kw: 'y = kx + b', desc: '标准斜截式方程形式与特殊正比例函数判断' },
+    { kw: '斜率截距式方程', desc: '斜率 k 与 y 轴截距 b 的几何与代数性质' },
+    { kw: '一次函数坐标轴交点', desc: '令 x=0 得 (0, b)，令 y=0 得 (-b/k, 0) 并求直角三角形面积' },
+    { kw: '一次函数图像与性质', desc: '象限分布表、k与b的符号对增减性的影响' }
+  ],
+  en: [
+    { kw: 'Linear Function Calculator', desc: 'Instant line equation generator in slope-intercept form y = mx + b' },
+    { kw: 'Line Equation from Two Points', desc: 'Find equation passing through (x1, y1) and (x2, y2) with steps' },
+    { kw: 'Slope-Intercept Form Calculator', desc: 'Calculate exact slope (m/k), y-intercept (b), and x-intercept' },
+    { kw: 'Two Point Line Form', desc: 'Step-by-step substitution method and point-slope form deduction' },
+    { kw: 'y = mx + b / y = kx + b', desc: 'Standard algebraic linear equation format and fractional arithmetic' },
+    { kw: 'X and Y Intercepts Calculator', desc: 'Find coordinate axes intersection points and enclosed triangle area' },
+    { kw: 'Perpendicular Bisector Calculator', desc: 'Line equation perpendicular to the segment passing through midpoint M' },
+    { kw: 'Interactive Linear Graph', desc: 'High-precision Cartesian coordinate plane with drag-and-drop points' }
+  ]
+};
+
 export default function App() {
-  const [lang, setLang] = useState<'zh' | 'en'>('zh');
+  // Read language from URL params or navigator
+  const [lang, setLang] = useState<'zh' | 'en'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang');
+      if (urlLang === 'en' || urlLang === 'zh') return urlLang;
+      if (navigator.language && !navigator.language.startsWith('zh')) return 'en';
+    }
+    return 'zh';
+  });
+
+  // Synchronize URL and Document Title for Google SEO
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Update URL parameter without reload
+    const url = new URL(window.location.href);
+    if (lang === 'en') {
+      url.searchParams.set('lang', 'en');
+      document.title = 'Linear Function Calculator | Line Equation from Two Points (y = mx + b)';
+      document.documentElement.lang = 'en';
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) {
+        metaDesc.setAttribute(
+          'content',
+          'Free online linear function & line equation calculator. Enter two points to instantly find slope m, y-intercept b, equation y=mx+b, axes intercepts, steps, and interactive graph.'
+        );
+      }
+    } else {
+      url.searchParams.delete('lang');
+      document.title = '一次函数解析式生成器 | 求一次函数计算器 - 两点求直线方程 y=kx+b (Linear Function Calculator)';
+      document.documentElement.lang = 'zh-CN';
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) {
+        metaDesc.setAttribute(
+          'content',
+          '专业免费在线一次函数解析式生成器与计算器。输入两个坐标点(x1,y1)和(x2,y2)，秒出斜率k、截距b、解析式y=kx+b、一般式、坐标轴交点及交互式函数图像。支持分数精度与详细解题步骤。'
+        );
+      }
+    }
+    window.history.replaceState({}, '', url.toString());
+  }, [lang]);
 
   // Input points numerical state
   const [p1, setP1] = useState<Point>({ x: 1, y: 2 });
@@ -110,7 +175,7 @@ export default function App() {
 
   // UI state
   const [copiedEq, setCopiedEq] = useState(false);
-  const [subView, setSubView] = useState<'steps' | 'evaluator' | 'guide' | 'faq'>('steps');
+  const [subView, setSubView] = useState<'steps' | 'evaluator' | 'guide' | 'seo' | 'faq'>('steps');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Reactive result
@@ -242,6 +307,7 @@ export default function App() {
       tabSteps: '解题步骤推导',
       tabEvaluator: '函数求值器',
       tabGuide: '公式与考点归纳',
+      tabSeo: 'Google 核心关键词库',
       tabFaq: '常见问题答疑',
       graphTitle: '交互式直角坐标系图像',
       graphTip: '支持直接在画布拖拽点 A、点 B 实时更新 (含手机触摸支持)',
@@ -291,6 +357,7 @@ export default function App() {
       tabSteps: 'Step-by-Step Solution',
       tabEvaluator: 'Point Evaluator',
       tabGuide: 'Properties & Guide',
+      tabSeo: 'Google SEO Keywords',
       tabFaq: 'FAQ',
       graphTitle: 'Interactive Coordinate Graph',
       graphTip: 'Drag Point A / Point B directly on canvas (Touch supported on mobile)',
@@ -731,6 +798,17 @@ export default function App() {
               {t.tabGuide}
             </button>
             <button
+              onClick={() => setSubView('seo')}
+              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                subView === 'seo'
+                  ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Search className="h-3.5 w-3.5 inline mr-1.5" />
+              {t.tabSeo}
+            </button>
+            <button
               onClick={() => setSubView('faq')}
               className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 subView === 'faq'
@@ -783,12 +861,12 @@ export default function App() {
                 <p className="text-xs text-slate-500">
                   {t.evalPrompt} <strong className="text-indigo-700 font-mono text-sm">{result.slopeInterceptEq}</strong>
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-[11px] text-slate-400">快速带入核心特征点：</span>
                   {result.xIntercept !== undefined && (
                     <button
                       onClick={() => result.xIntercept !== undefined && setEvalX(formatNum(result.xIntercept))}
-                      className="px-2 py-0.5 rounded text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                      className="px-2 py-0.5 rounded text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
                     >
                       X轴交点 x={formatNum(result.xIntercept)}
                     </button>
@@ -796,14 +874,14 @@ export default function App() {
                   {result.b !== undefined && (
                     <button
                       onClick={() => setEvalX('0')}
-                      className="px-2 py-0.5 rounded text-[11px] bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                      className="px-2 py-0.5 rounded text-[11px] bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
                     >
                       Y轴截距 x=0
                     </button>
                   )}
                   <button
                     onClick={() => setEvalX(formatNum(result.midpoint.x))}
-                    className="px-2 py-0.5 rounded text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                    className="px-2 py-0.5 rounded text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer"
                   >
                     中点 M
                   </button>
@@ -999,7 +1077,76 @@ export default function App() {
             </div>
           )}
 
-          {/* Subview 4: FAQ (Fully Bilingual) */}
+          {/* Subview 4: Google SEO Bilingual Keywords Index (NEW) */}
+          {subView === 'seo' && (
+            <div className="p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-indigo-600" />
+                    <span>{lang === 'zh' ? 'Google 搜索引擎中英双语关键词索引表' : 'Google Search Engine Bilingual Keywords Index'}</span>
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {lang === 'zh'
+                      ? '本页面已按 Google 推荐标准针对以下中英高频关键词进行完整 TDK、语义标签与 Schema.org 结构化标记'
+                      : 'This web application is optimized according to Google guidelines with semantic tags, sitemaps, and Schema.org for the following keywords.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Chinese Keyword Cluster */}
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <span className="font-bold text-xs text-indigo-700 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-indigo-600" />
+                      中文重点收录词 (Chinese Search Intent)
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">zh-CN</span>
+                  </div>
+                  <div className="space-y-2">
+                    {BILINGUAL_SEO_KEYWORDS.zh.map((item, idx) => (
+                      <div key={idx} className="p-2 rounded-lg bg-white border border-slate-200/80 flex items-start justify-between gap-3 text-xs">
+                        <div>
+                          <strong className="text-slate-900 font-semibold block">{item.kw}</strong>
+                          <span className="text-slate-500 text-[11px]">{item.desc}</span>
+                        </div>
+                        <span className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 font-mono">
+                          #Top{idx + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* English Keyword Cluster */}
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <span className="font-bold text-xs text-blue-700 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-blue-600" />
+                      英文重点收录词 (English Search Intent)
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">en-US</span>
+                  </div>
+                  <div className="space-y-2">
+                    {BILINGUAL_SEO_KEYWORDS.en.map((item, idx) => (
+                      <div key={idx} className="p-2 rounded-lg bg-white border border-slate-200/80 flex items-start justify-between gap-3 text-xs">
+                        <div>
+                          <strong className="text-slate-900 font-semibold block">{item.kw}</strong>
+                          <span className="text-slate-500 text-[11px]">{item.desc}</span>
+                        </div>
+                        <span className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-mono">
+                          #Top{idx + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Subview 5: FAQ (Fully Bilingual) */}
           {subView === 'faq' && (
             <div className="p-6 space-y-3">
               {(lang === 'zh'
@@ -1070,28 +1217,46 @@ export default function App() {
         </div>
       </main>
 
-      {/* 4. Clean Minimal Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-slate-500 text-xs mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">
-              {lang === 'zh' ? '一次函数解析式生成器' : 'Linear Function Calculator'}
-            </span>
-            <span>· {t.footerText}</span>
+      {/* 4. Clean Minimal Footer with Bilingual Keywords Tag Cloud */}
+      <footer className="border-t border-slate-200 bg-white py-8 text-slate-500 text-xs mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700">
+                {lang === 'zh' ? '一次函数解析式生成器' : 'Linear Function Calculator'}
+              </span>
+              <span>· {t.footerText}</span>
+            </div>
+
+            <div className="flex items-center gap-4 text-slate-500">
+              <a
+                href="https://github.com/laohu90/linear-function-calculator"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-indigo-600 transition-colors flex items-center gap-1"
+              >
+                <Github className="h-3.5 w-3.5" />
+                <span>{t.sourceCode}</span>
+              </a>
+              <span className="text-slate-300">|</span>
+              <span className="font-mono text-slate-600">{t.badge}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-500">
-            <a
-              href="https://github.com/laohu90/linear-function-calculator"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-indigo-600 transition-colors flex items-center gap-1"
-            >
-              <Github className="h-3.5 w-3.5" />
-              <span>{t.sourceCode}</span>
-            </a>
-            <span className="text-slate-300">|</span>
-            <span className="font-mono text-slate-600">{t.badge}</span>
+          {/* Bilingual Keywords Footer Bar for Google Crawling */}
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span className="font-semibold text-slate-600 flex items-center gap-1">
+              <Search className="h-3 w-3 text-indigo-500" />
+              <span>{lang === 'zh' ? '双语收录词 (Indexed Keywords):' : 'Bilingual Keywords:'}</span>
+            </span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">一次函数解析式生成器</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">一次函数计算器</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">两点求直线方程</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">y = kx + b</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">Linear Function Calculator</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">Line Equation from Two Points</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">Slope-Intercept Form Calculator</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">y = mx + b</span>
           </div>
         </div>
       </footer>
