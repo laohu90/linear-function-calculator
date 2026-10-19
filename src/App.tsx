@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   calculateFromTwoPoints,
   Point,
@@ -25,27 +25,72 @@ import {
   Sliders,
   ChevronDown,
   ChevronUp,
-  CheckCircle2,
   TrendingUp,
   TrendingDown,
   Minus
 } from 'lucide-react';
 
 const PRESET_EXAMPLES = [
-  { label: '经典例题1: (1, 3) 与 (3, 7) [增函数]', p1: { x: 1, y: 3 }, p2: { x: 3, y: 7 } },
-  { label: '经典例题2: (-2, 5) 与 (4, -1) [减函数]', p1: { x: -2, y: 5 }, p2: { x: 4, y: -1 } },
-  { label: '经典例题3: (0, 0) 与 (2, 6) [正比例函数]', p1: { x: 0, y: 0 }, p2: { x: 2, y: 6 } },
-  { label: '经典例题4: (1, 2) 与 (4, 4) [分数斜率 2/3]', p1: { x: 1, y: 2 }, p2: { x: 4, y: 4 } },
-  { label: '特殊线型5: (-3, 4) 与 (5, 4) [水平线 k=0]', p1: { x: -3, y: 4 }, p2: { x: 5, y: 4 } },
-  { label: '特殊线型6: (3, -2) 与 (3, 5) [垂直线 k不存在]', p1: { x: 3, y: -2 }, p2: { x: 3, y: 5 } }
+  {
+    labelZh: '经典例题1: (1, 3) 与 (3, 7) [增函数]',
+    labelEn: 'Example 1: (1, 3) and (3, 7) [Increasing]',
+    p1: { x: 1, y: 3 },
+    p2: { x: 3, y: 7 }
+  },
+  {
+    labelZh: '经典例题2: (-2, 5) 与 (4, -1) [减函数]',
+    labelEn: 'Example 2: (-2, 5) and (4, -1) [Decreasing]',
+    p1: { x: -2, y: 5 },
+    p2: { x: 4, y: -1 }
+  },
+  {
+    labelZh: '经典例题3: (0, 0) 与 (2, 6) [正比例函数]',
+    labelEn: 'Example 3: (0, 0) and (2, 6) [Direct Proportion]',
+    p1: { x: 0, y: 0 },
+    p2: { x: 2, y: 6 }
+  },
+  {
+    labelZh: '经典例题4: (1, 2) 与 (4, 4) [分数斜率 2/3]',
+    labelEn: 'Example 4: (1, 2) and (4, 4) [Fraction Slope 2/3]',
+    p1: { x: 1, y: 2 },
+    p2: { x: 4, y: 4 }
+  },
+  {
+    labelZh: '特殊线型5: (-3, 4) 与 (5, 4) [水平线 k=0]',
+    labelEn: 'Example 5: (-3, 4) and (5, 4) [Horizontal Line k=0]',
+    p1: { x: -3, y: 4 },
+    p2: { x: 5, y: 4 }
+  },
+  {
+    labelZh: '特殊线型6: (3, -2) 与 (3, 5) [垂直线 k不存在]',
+    labelEn: 'Example 6: (3, -2) and (3, 5) [Vertical Line Undefined]',
+    p1: { x: 3, y: -2 },
+    p2: { x: 3, y: 5 }
+  }
 ];
 
 export default function App() {
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
 
-  // Input points
+  // Input points numerical state
   const [p1, setP1] = useState<Point>({ x: 1, y: 2 });
   const [p2, setP2] = useState<Point>({ x: 4, y: 8 });
+
+  // String buffers for smooth typing of '-' and '.'
+  const [strX1, setStrX1] = useState<string>('1');
+  const [strY1, setStrY1] = useState<string>('2');
+  const [strX2, setStrX2] = useState<string>('4');
+  const [strY2, setStrY2] = useState<string>('8');
+
+  // Sync string inputs when p1 or p2 are changed externally (e.g. dragging on canvas)
+  const syncInputsFromPoints = (pt1: Point, pt2: Point) => {
+    setP1(pt1);
+    setP2(pt2);
+    setStrX1(pt1.x.toString());
+    setStrY1(pt1.y.toString());
+    setStrX2(pt2.x.toString());
+    setStrY2(pt2.y.toString());
+  };
 
   // Evaluator inputs
   const [evalX, setEvalX] = useState<string>('5');
@@ -58,8 +103,8 @@ export default function App() {
 
   // Reactive result
   const result: CalculationResult = useMemo(() => {
-    return calculateFromTwoPoints(p1, p2);
-  }, [p1, p2]);
+    return calculateFromTwoPoints(p1, p2, lang);
+  }, [p1, p2, lang]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -68,8 +113,7 @@ export default function App() {
   };
 
   const handleSwap = () => {
-    setP1({ ...p2 });
-    setP2({ ...p1 });
+    syncInputsFromPoints({ ...p2 }, { ...p1 });
   };
 
   const handleRandom = () => {
@@ -79,21 +123,43 @@ export default function App() {
     let rx2 = rand();
     let ry2 = rand();
     if (rx1 === rx2 && ry1 === ry2) rx2 += 2;
-    setP1({ x: rx1, y: ry1 });
-    setP2({ x: rx2, y: ry2 });
+    syncInputsFromPoints({ x: rx1, y: ry1 }, { x: rx2, y: ry2 });
+  };
+
+  // Text input handlers allowing '-' and '.'
+  const handleInputChange = (field: 'x1' | 'y1' | 'x2' | 'y2', val: string) => {
+    if (field === 'x1') {
+      setStrX1(val);
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed)) setP1(prev => ({ ...prev, x: parsed }));
+    } else if (field === 'y1') {
+      setStrY1(val);
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed)) setP1(prev => ({ ...prev, y: parsed }));
+    } else if (field === 'x2') {
+      setStrX2(val);
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed)) setP2(prev => ({ ...prev, x: parsed }));
+    } else if (field === 'y2') {
+      setStrY2(val);
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed)) setP2(prev => ({ ...prev, y: parsed }));
+    }
   };
 
   const evaluatedY = useMemo(() => {
     const xNum = parseFloat(evalX);
     if (isNaN(xNum) || !result.isValid) return '—';
     if (result.specialType === 'vertical') {
-      return xNum === result.p1.x ? '任意实数' : '无对应点';
+      return xNum === result.p1.x
+        ? (lang === 'zh' ? '任意实数' : 'Any real number')
+        : (lang === 'zh' ? '无对应点' : 'No corresponding point');
     }
     if (result.k !== undefined && result.b !== undefined) {
       return formatNum(result.k * xNum + result.b);
     }
     return '—';
-  }, [evalX, result]);
+  }, [evalX, result, lang]);
 
   const evaluatedX = useMemo(() => {
     const yNum = parseFloat(evalY);
@@ -102,13 +168,15 @@ export default function App() {
       return formatNum(result.p1.x);
     }
     if (result.specialType === 'horizontal') {
-      return yNum === result.p1.y ? '任意实数' : '无对应点';
+      return yNum === result.p1.y
+        ? (lang === 'zh' ? '任意实数' : 'Any real number')
+        : (lang === 'zh' ? '无对应点' : 'No corresponding point');
     }
     if (result.k !== undefined && result.b !== undefined && Math.abs(result.k) > 1e-9) {
       return formatNum((yNum - result.b) / result.k);
     }
     return '—';
-  }, [evalY, result]);
+  }, [evalY, result, lang]);
 
   const t = {
     zh: {
@@ -144,12 +212,22 @@ export default function App() {
       graphTip: '支持直接在画布拖拽点 A、点 B 实时更新',
       evalXLabel: '已知 x 求 y：',
       evalYLabel: '已知 y 求 x：',
-      footerText: '一次函数解析式生成器 · 专业数学教育与计算工具'
+      evalPrompt: '在当前求得的直线方程下快速求值：',
+      evalResultBadge: '计算结果',
+      footerText: '一次函数解析式生成器 · 专业数学教育与计算工具',
+      sourceCode: 'GitHub 源码',
+      monoInc: '递增 (k > 0)',
+      monoDec: '递减 (k < 0)',
+      monoConst: '常数水平线',
+      monoVert: '垂直线',
+      quadrantPrefix: '第 ',
+      quadrantSuffix: ' 象限',
+      originThrough: '过原点'
     },
     en: {
       siteTitle: 'Linear Function Calculator',
       badge: 'y = mx + b',
-      subTitle: 'Calculate line equation from two coordinates with steps and graph',
+      subTitle: 'Calculate line equation from two coordinates with slope, intercepts and graph',
       pointCardTitle: 'Enter Coordinates',
       pointA: 'Point A',
       pointB: 'Point B',
@@ -169,17 +247,27 @@ export default function App() {
       midpoint: 'Midpoint M',
       angle: 'Angle α',
       triangleArea: 'Axes Triangle Area',
-      monotonicity: 'Behavior',
+      monotonicity: 'Monotonicity',
       quadrants: 'Quadrants',
-      tabSteps: 'Step-by-Step Derivation',
+      tabSteps: 'Step-by-Step Solution',
       tabEvaluator: 'Point Evaluator',
       tabGuide: 'Properties & Guide',
       tabFaq: 'FAQ',
       graphTitle: 'Interactive Coordinate Graph',
-      graphTip: 'Drag Point A / Point B directly to update in real time',
-      evalXLabel: 'Given x, find y:',
-      evalYLabel: 'Given y, find x:',
-      footerText: 'Linear Function & Line Equation Generator from Two Points'
+      graphTip: 'Drag Point A / Point B directly on canvas to update in real time',
+      evalXLabel: 'Given x, calculate y:',
+      evalYLabel: 'Given y, calculate x:',
+      evalPrompt: 'Quickly evaluate points on the current line equation:',
+      evalResultBadge: 'Result',
+      footerText: 'Linear Function & Line Equation Generator from Two Points',
+      sourceCode: 'GitHub Source',
+      monoInc: 'Increasing (k > 0)',
+      monoDec: 'Decreasing (k < 0)',
+      monoConst: 'Constant (Horizontal)',
+      monoVert: 'Vertical Line',
+      quadrantPrefix: 'Quadrants ',
+      quadrantSuffix: '',
+      originThrough: 'Passes origin'
     }
   }[lang];
 
@@ -219,15 +307,17 @@ export default function App() {
                 onChange={(e) => {
                   const idx = parseInt(e.target.value);
                   if (!isNaN(idx) && PRESET_EXAMPLES[idx]) {
-                    setP1({ ...PRESET_EXAMPLES[idx].p1 });
-                    setP2({ ...PRESET_EXAMPLES[idx].p2 });
+                    syncInputsFromPoints(
+                      { ...PRESET_EXAMPLES[idx].p1 },
+                      { ...PRESET_EXAMPLES[idx].p2 }
+                    );
                   }
                 }}
                 className="bg-transparent text-xs text-slate-700 font-medium focus:outline-none cursor-pointer"
               >
                 {PRESET_EXAMPLES.map((ex, i) => (
                   <option key={i} value={i}>
-                    {ex.label}
+                    {lang === 'zh' ? ex.labelZh : ex.labelEn}
                   </option>
                 ))}
               </select>
@@ -236,7 +326,8 @@ export default function App() {
             {/* Language Switcher */}
             <button
               onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-2xs cursor-pointer"
+              title={lang === 'zh' ? 'Switch to English' : '切换为简体中文'}
             >
               <Globe className="h-3.5 w-3.5 text-indigo-600" />
               <span>{lang === 'zh' ? 'EN' : '中文'}</span>
@@ -273,7 +364,7 @@ export default function App() {
                   <button
                     onClick={handleSwap}
                     title={t.swapBtn}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
                   >
                     <ArrowRightLeft className="h-3.5 w-3.5" />
                     <span>{t.swapBtn}</span>
@@ -281,7 +372,7 @@ export default function App() {
                   <button
                     onClick={handleRandom}
                     title={t.randomBtn}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
                   >
                     <Shuffle className="h-3.5 w-3.5" />
                     <span>{t.randomBtn}</span>
@@ -306,20 +397,18 @@ export default function App() {
                     <div>
                       <span className="block text-[10px] text-slate-500 font-medium mb-1">x₁</span>
                       <input
-                        type="number"
-                        step="any"
-                        value={p1.x}
-                        onChange={(e) => setP1({ ...p1, x: parseFloat(e.target.value) || 0 })}
+                        type="text"
+                        value={strX1}
+                        onChange={(e) => handleInputChange('x1', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                     <div>
                       <span className="block text-[10px] text-slate-500 font-medium mb-1">y₁</span>
                       <input
-                        type="number"
-                        step="any"
-                        value={p1.y}
-                        onChange={(e) => setP1({ ...p1, y: parseFloat(e.target.value) || 0 })}
+                        type="text"
+                        value={strY1}
+                        onChange={(e) => handleInputChange('y1', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
@@ -341,20 +430,18 @@ export default function App() {
                     <div>
                       <span className="block text-[10px] text-slate-500 font-medium mb-1">x₂</span>
                       <input
-                        type="number"
-                        step="any"
-                        value={p2.x}
-                        onChange={(e) => setP2({ ...p2, x: parseFloat(e.target.value) || 0 })}
+                        type="text"
+                        value={strX2}
+                        onChange={(e) => handleInputChange('x2', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
                       />
                     </div>
                     <div>
                       <span className="block text-[10px] text-slate-500 font-medium mb-1">y₂</span>
                       <input
-                        type="number"
-                        step="any"
-                        value={p2.y}
-                        onChange={(e) => setP2({ ...p2, y: parseFloat(e.target.value) || 0 })}
+                        type="text"
+                        value={strY2}
+                        onChange={(e) => handleInputChange('y2', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
                       />
                     </div>
@@ -383,7 +470,7 @@ export default function App() {
 
                 <button
                   onClick={() => handleCopy(result.slopeInterceptEq)}
-                  className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 >
                   {copiedEq ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   <span>{copiedEq ? t.copied : t.copyBtn}</span>
@@ -396,7 +483,7 @@ export default function App() {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <span className="text-[11px] text-slate-500 block mb-0.5">{t.slope}</span>
                   <div className="text-base font-bold text-indigo-700 font-mono">
-                    {result.hasSlope ? result.kText : '不存在'}
+                    {result.hasSlope ? result.kText : (lang === 'zh' ? '不存在' : 'Undefined')}
                   </div>
                   {result.k !== undefined && !result.kFraction?.isInteger && (
                     <div className="text-[10px] text-slate-400 font-mono">
@@ -409,7 +496,7 @@ export default function App() {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <span className="text-[11px] text-slate-500 block mb-0.5">{t.intercept}</span>
                   <div className="text-base font-bold text-amber-700 font-mono">
-                    {result.hasYIntercept ? result.bText : '无'}
+                    {result.hasYIntercept ? result.bText : (lang === 'zh' ? '无' : 'None')}
                   </div>
                   {result.b !== undefined && !result.bFraction?.isInteger && (
                     <div className="text-[10px] text-slate-400 font-mono">
@@ -424,9 +511,9 @@ export default function App() {
                   <div className="text-xs font-bold text-emerald-700 font-mono truncate">
                     {result.xInterceptPoint
                       ? `(${result.xInterceptText}, 0)`
-                      : result.xInterceptText || '无'}
+                      : result.xInterceptText || (lang === 'zh' ? '无' : 'None')}
                   </div>
-                  <div className="text-[10px] text-slate-400">令 y = 0</div>
+                  <div className="text-[10px] text-slate-400">{lang === 'zh' ? '令 y = 0' : 'Set y = 0'}</div>
                 </div>
 
                 {/* Y-Intercept Point */}
@@ -435,9 +522,9 @@ export default function App() {
                   <div className="text-xs font-bold text-amber-700 font-mono truncate">
                     {result.yInterceptPoint
                       ? `(0, ${result.bText})`
-                      : result.bText || '无'}
+                      : result.bText || (lang === 'zh' ? '无' : 'None')}
                   </div>
-                  <div className="text-[10px] text-slate-400">令 x = 0</div>
+                  <div className="text-[10px] text-slate-400">{lang === 'zh' ? '令 x = 0' : 'Set x = 0'}</div>
                 </div>
               </div>
 
@@ -467,19 +554,21 @@ export default function App() {
                     {result.monotonicity === 'constant' && <Minus className="h-3 w-3 text-slate-500" />}
                     <span>
                       {result.monotonicity === 'increasing'
-                        ? '递增 (k > 0)'
+                        ? t.monoInc
                         : result.monotonicity === 'decreasing'
-                        ? '递减 (k < 0)'
+                        ? t.monoDec
                         : result.monotonicity === 'constant'
-                        ? '常数水平线'
-                        : '垂直线'}
+                        ? t.monoConst
+                        : t.monoVert}
                     </span>
                   </span>
                 </div>
                 <div>
                   <span className="text-slate-400 text-[11px] block">{t.quadrants}</span>
                   <span className="font-medium text-slate-800">
-                    {result.quadrants.length > 0 ? `第 ${result.quadrants.join('、')} 象限` : '过原点'}
+                    {result.quadrants.length > 0
+                      ? `${t.quadrantPrefix}${result.quadrants.join(lang === 'zh' ? '、' : ', ')}${t.quadrantSuffix}`
+                      : t.originThrough}
                   </span>
                 </div>
                 <div>
@@ -510,8 +599,7 @@ export default function App() {
             <CoordinatePlane
               result={result}
               onPointChange={(newP1, newP2) => {
-                setP1(newP1);
-                setP2(newP2);
+                syncInputsFromPoints(newP1, newP2);
               }}
               lang={lang}
             />
@@ -524,7 +612,7 @@ export default function App() {
           <div className="flex border-b border-slate-200 bg-slate-50/70 p-1.5 gap-1.5 overflow-x-auto text-xs font-semibold">
             <button
               onClick={() => setSubView('steps')}
-              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 subView === 'steps'
                   ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -535,7 +623,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setSubView('evaluator')}
-              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 subView === 'evaluator'
                   ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -546,7 +634,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setSubView('guide')}
-              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 subView === 'guide'
                   ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -557,7 +645,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setSubView('faq')}
-              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 subView === 'faq'
                   ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -573,10 +661,12 @@ export default function App() {
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  分步演算记录 · 待定系数法与斜率公式法
+                  {lang === 'zh'
+                    ? '分步演算记录 · 待定系数法与斜率公式法'
+                    : 'Step-by-Step Derivation · Substitution & Slope Formula'}
                 </span>
                 <span className="text-xs text-indigo-600 font-mono font-medium">
-                  两点: A({p1.x}, {p1.y}) 与 B({p2.x}, {p2.y})
+                  {lang === 'zh' ? '两点坐标' : 'Points'}: A({p1.x}, {p1.y}) {lang === 'zh' ? '与' : 'and'} B({p2.x}, {p2.y})
                 </span>
               </div>
 
@@ -603,7 +693,7 @@ export default function App() {
           {subView === 'evaluator' && (
             <div className="p-6 space-y-4">
               <p className="text-xs text-slate-500">
-                在当前求得的一次函数 <strong className="text-slate-800 font-mono">{result.slopeInterceptEq}</strong> 下快速计算对应点坐标：
+                {t.evalPrompt} <strong className="text-slate-800 font-mono">{result.slopeInterceptEq}</strong>
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -622,7 +712,7 @@ export default function App() {
                     />
                   </div>
                   <div className="text-right">
-                    <span className="text-[11px] text-slate-400 block">计算结果</span>
+                    <span className="text-[11px] text-slate-400 block">{t.evalResultBadge}</span>
                     <span className="text-base font-bold font-mono text-indigo-700">
                       y = {evaluatedY}
                     </span>
@@ -644,7 +734,7 @@ export default function App() {
                     />
                   </div>
                   <div className="text-right">
-                    <span className="text-[11px] text-slate-400 block">计算结果</span>
+                    <span className="text-[11px] text-slate-400 block">{t.evalResultBadge}</span>
                     <span className="text-base font-bold font-mono text-indigo-700">
                       x = {evaluatedX}
                     </span>
@@ -654,99 +744,188 @@ export default function App() {
             </div>
           )}
 
-          {/* Subview 3: Formula & Guide (Clean Table) */}
+          {/* Subview 3: Formula & Guide (Fully Bilingual) */}
           {subView === 'guide' && (
             <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <h4 className="text-sm font-bold text-slate-900 mb-1.5">
-                    1. 一次函数标准形式定义
-                  </h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    一般地，形如 <strong>y = kx + b</strong>（k, b 为常数，且 <strong>k ≠ 0</strong>）叫做一次函数。
-                    当 <strong>b = 0</strong> 时为<strong>正比例函数</strong>，图像必过原点 (0, 0)。
-                  </p>
-                </div>
+              {lang === 'zh' ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-900 mb-1.5">
+                        1. 一次函数标准形式定义
+                      </h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        一般地，形如 <strong>y = kx + b</strong>（k, b 为常数，且 <strong>k ≠ 0</strong>）叫做一次函数。
+                        当 <strong>b = 0</strong> 时为<strong>正比例函数</strong>，图像必过原点 (0, 0)。
+                      </p>
+                    </div>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <h4 className="text-sm font-bold text-slate-900 mb-1.5">
-                    2. 斜率 k 与截距 b 的几何意义
-                  </h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    斜率 <strong>k = (y₂ - y₁) / (x₂ - x₁)</strong> 决定直线的倾斜方向与陡缓；
-                    截距 <strong>b</strong> 为直线与 y 轴交点的纵坐标 (0, b)。
-                  </p>
-                </div>
-              </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-900 mb-1.5">
+                        2. 斜率 k 与截距 b 的几何意义
+                      </h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        斜率 <strong>k = (y₂ - y₁) / (x₂ - x₁)</strong> 决定直线的倾斜方向与陡缓；
+                        截距 <strong>b</strong> 为直线与 y 轴交点的纵坐标 (0, b)。
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Clean Table */}
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 mb-2.5">
-                  3. 象限分布规律速查表
-                </h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-xs text-left text-slate-700">
-                    <thead className="bg-slate-100/80 text-slate-600 font-semibold">
-                      <tr>
-                        <th className="px-4 py-2.5 border-b border-slate-200">符号条件</th>
-                        <th className="px-4 py-2.5 border-b border-slate-200">经过象限</th>
-                        <th className="px-4 py-2.5 border-b border-slate-200">增减性</th>
-                        <th className="px-4 py-2.5 border-b border-slate-200">与 y 轴交点</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      <tr>
-                        <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &gt; 0, b &gt; 0</td>
-                        <td className="px-4 py-2.5 text-emerald-700 font-medium">第一、二、三象限</td>
-                        <td className="px-4 py-2.5">y 随 x 增大而增大</td>
-                        <td className="px-4 py-2.5">正半轴 (0, b)</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &gt; 0, b &lt; 0</td>
-                        <td className="px-4 py-2.5 text-emerald-700 font-medium">第一、三、四象限</td>
-                        <td className="px-4 py-2.5">y 随 x 增大而增大</td>
-                        <td className="px-4 py-2.5">负半轴 (0, b)</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &lt; 0, b &gt; 0</td>
-                        <td className="px-4 py-2.5 text-emerald-700 font-medium">第一、二、四象限</td>
-                        <td className="px-4 py-2.5">y 随 x 增大而减小</td>
-                        <td className="px-4 py-2.5">正半轴 (0, b)</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &lt; 0, b &lt; 0</td>
-                        <td className="px-4 py-2.5 text-emerald-700 font-medium">第二、三、四象限</td>
-                        <td className="px-4 py-2.5">y 随 x 增大而减小</td>
-                        <td className="px-4 py-2.5">负半轴 (0, b)</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 mb-2.5">
+                      3. 象限分布规律速查表 (中考必考)
+                    </h4>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-xs text-left text-slate-700">
+                        <thead className="bg-slate-100/80 text-slate-600 font-semibold">
+                          <tr>
+                            <th className="px-4 py-2.5 border-b border-slate-200">符号条件</th>
+                            <th className="px-4 py-2.5 border-b border-slate-200">经过象限</th>
+                            <th className="px-4 py-2.5 border-b border-slate-200">增减性</th>
+                            <th className="px-4 py-2.5 border-b border-slate-200">与 y 轴交点</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &gt; 0, b &gt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">第一、二、三象限</td>
+                            <td className="px-4 py-2.5">y 随 x 增大而增大</td>
+                            <td className="px-4 py-2.5">正半轴 (0, b)</td>
+                          </tr>
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &gt; 0, b &lt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">第一、三、四象限</td>
+                            <td className="px-4 py-2.5">y 随 x 增大而增大</td>
+                            <td className="px-4 py-2.5">负半轴 (0, b)</td>
+                          </tr>
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &lt; 0, b &gt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">第一、二、四象限</td>
+                            <td className="px-4 py-2.5">y 随 x 增大而减小</td>
+                            <td className="px-4 py-2.5">正半轴 (0, b)</td>
+                          </tr>
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">k &lt; 0, b &lt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">第二、三、四象限</td>
+                            <td className="px-4 py-2.5">y 随 x 增大而减小</td>
+                            <td className="px-4 py-2.5">负半轴 (0, b)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-900 mb-1.5">
+                        1. Definition of Linear Function
+                      </h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        A function of the form <strong>y = mx + b</strong> (where m and b are constants, and <strong>m ≠ 0</strong>) is called a linear function. When <strong>b = 0</strong>, y = mx represents direct proportion, always passing through the origin (0, 0).
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-900 mb-1.5">
+                        2. Geometric Meaning of Slope & Intercept
+                      </h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        The slope <strong>m = (y₂ - y₁) / (x₂ - x₁)</strong> indicates the steepness and direction of the line. The y-intercept <strong>b</strong> is the y-coordinate of the point where the line crosses the y-axis at (0, b).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 mb-2.5">
+                      3. Quadrant & Behavior Reference Table
+                    </h4>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-xs text-left text-slate-700">
+                        <thead className="bg-slate-100/80 text-slate-600 font-semibold">
+                          <tr>
+                            <th className="px-4 py-2.5 border-b border-slate-200">Condition</th>
+                            <th className="px-4 py-2.5 border-b border-slate-200">Quadrants Passed</th>
+                            <th className="px-4 py-2.5 border-b border-slate-200">Monotonicity</th>
+                            <th className="px-4 py-2.5 border-b border-slate-200">Y-Intercept Position</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">m &gt; 0, b &gt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">Quadrants I, II, III</td>
+                            <td className="px-4 py-2.5">y increases as x increases</td>
+                            <td className="px-4 py-2.5">Positive Y-axis (0, b)</td>
+                          </tr>
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">m &gt; 0, b &lt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">Quadrants I, III, IV</td>
+                            <td className="px-4 py-2.5">y increases as x increases</td>
+                            <td className="px-4 py-2.5">Negative Y-axis (0, b)</td>
+                          </tr>
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">m &lt; 0, b &gt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">Quadrants I, II, IV</td>
+                            <td className="px-4 py-2.5">y decreases as x increases</td>
+                            <td className="px-4 py-2.5">Positive Y-axis (0, b)</td>
+                          </tr>
+                          <tr>
+                            <td className="px-4 py-2.5 font-bold font-mono text-indigo-700">m &lt; 0, b &lt; 0</td>
+                            <td className="px-4 py-2.5 text-emerald-700 font-medium">Quadrants II, III, IV</td>
+                            <td className="px-4 py-2.5">y decreases as x increases</td>
+                            <td className="px-4 py-2.5">Negative Y-axis (0, b)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
-          {/* Subview 4: FAQ */}
+          {/* Subview 4: FAQ (Fully Bilingual) */}
           {subView === 'faq' && (
             <div className="p-6 space-y-3">
-              {[
-                {
-                  q: '两点横坐标相同 (x₁ = x₂) 时怎么算？',
-                  a: '当两点的横坐标相同时，直线垂直于 x 轴（平行于 y 轴），分母 x₂ - x₁ = 0，斜率不存在。直线方程为垂直线方程 x = x₁。'
-                },
-                {
-                  q: '两点纵坐标相同 (y₁ = y₂) 时是一次函数吗？',
-                  a: '当纵坐标相同时，斜率 k = 0，方程为常数函数 y = y₁（平行于 x 轴的水平线）。'
-                },
-                {
-                  q: '如何快速计算直线与两坐标轴围成的直角三角形面积？',
-                  a: '设与两坐标轴交点为 (x₀, 0) 与 (0, y₀)，直角三角形面积为 S = 1/2 × |x₀| × |y₀| = 1/2 × |-b/k| × |b|。'
-                },
-                {
-                  q: '两条直线平行和垂直的斜率关系是什么？',
-                  a: '平行直线斜率相等 (k₁ = k₂) 且截距不等；垂直直线斜率互为负倒数 (k₁ × k₂ = -1，即 k₂ = -1/k₁)。'
-                }
-              ].map((faq, i) => {
+              {(lang === 'zh'
+                ? [
+                    {
+                      q: '两点横坐标相同 (x₁ = x₂) 时怎么算？',
+                      a: '当两点的横坐标相同时，直线垂直于 x 轴（平行于 y 轴），分母 x₂ - x₁ = 0，斜率不存在。直线方程为垂直线形式 x = x₁。'
+                    },
+                    {
+                      q: '两点纵坐标相同 (y₁ = y₂) 时是一次函数吗？',
+                      a: '当纵坐标相同时，斜率 k = 0，方程为常数函数 y = y₁（平行于 x 轴的水平线）。'
+                    },
+                    {
+                      q: '如何快速计算直线与两坐标轴围成的直角三角形面积？',
+                      a: '设与两坐标轴交点为 (x₀, 0) 与 (0, y₀)，直角三角形面积为 S = 1/2 × |x₀| × |y₀| = 1/2 × |-b/k| × |b|。'
+                    },
+                    {
+                      q: '两条直线平行和垂直的斜率关系是什么？',
+                      a: '平行直线斜率相等 (k₁ = k₂) 且截距不等；垂直直线斜率互为负倒数 (k₁ × k₂ = -1，即 k₂ = -1/k₁)。'
+                    }
+                  ]
+                : [
+                    {
+                      q: 'What happens when x₁ = x₂?',
+                      a: 'When the two points have identical x-coordinates, the line is vertical (perpendicular to x-axis, parallel to y-axis). The denominator Δx = 0, so the slope is undefined. The equation is vertical line x = x₁.'
+                    },
+                    {
+                      q: 'What happens when y₁ = y₂?',
+                      a: 'When y-coordinates are equal, the slope is 0 (Δy = 0). The line is a horizontal constant line with equation y = y₁.'
+                    },
+                    {
+                      q: 'How to calculate the triangle area formed with coordinate axes?',
+                      a: 'With x-intercept (x₀, 0) and y-intercept (0, y₀), the right triangle area is Area = 1/2 × |x₀| × |y₀| = 1/2 × |-b/m| × |b|.'
+                    },
+                    {
+                      q: 'What are the conditions for parallel and perpendicular lines?',
+                      a: 'Parallel lines share identical slope (m₁ = m₂) with different intercepts. Perpendicular lines have negative reciprocal slopes (m₁ × m₂ = -1, meaning m₂ = -1/m₁).'
+                    }
+                  ]
+              ).map((faq, i) => {
                 const isOpen = openFaq === i;
                 return (
                   <div
@@ -755,7 +934,7 @@ export default function App() {
                   >
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : i)}
-                      className="w-full p-3.5 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+                      className="w-full p-3.5 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       <span>{faq.q}</span>
                       {isOpen ? (
@@ -781,7 +960,9 @@ export default function App() {
       <footer className="border-t border-slate-200 bg-white py-6 text-slate-500 text-xs mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">一次函数解析式生成器</span>
+            <span className="font-semibold text-slate-700">
+              {lang === 'zh' ? '一次函数解析式生成器' : 'Linear Function Calculator'}
+            </span>
             <span>· {t.footerText}</span>
           </div>
 
@@ -793,10 +974,10 @@ export default function App() {
               className="hover:text-indigo-600 transition-colors flex items-center gap-1"
             >
               <Github className="h-3.5 w-3.5" />
-              <span>GitHub 源码</span>
+              <span>{t.sourceCode}</span>
             </a>
             <span className="text-slate-300">|</span>
-            <span className="font-mono text-slate-600">y = kx + b</span>
+            <span className="font-mono text-slate-600">{t.badge}</span>
           </div>
         </div>
       </footer>

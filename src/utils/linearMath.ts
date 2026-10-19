@@ -67,7 +67,7 @@ export function toFraction(val: number, tolerance = 1e-6): Fraction {
     k1 = a * k1 + k2;
     k2 = aux;
 
-    if (k1 > 10000) break; // Avoid overly large denominator
+    if (k1 > 10000) break;
     const fracVal = h1 / k1;
     if (Math.abs(val - fracVal) <= tolerance * val || Math.abs(val - fracVal) < 1e-7) {
       break;
@@ -137,14 +137,14 @@ export interface CalculationResult {
   hasYIntercept: boolean;
   b?: number;
   bFraction?: Fraction;
-  bText?: string;
+  bText: string;
   yInterceptPoint?: Point;
 
   // X Intercept
   hasXIntercept: boolean;
   xIntercept?: number;
   xInterceptFraction?: Fraction;
-  xInterceptText?: string;
+  xInterceptText: string;
   xInterceptPoint?: Point;
 
   // Formatted Equations
@@ -165,9 +165,9 @@ export interface CalculationResult {
 
   // Properties
   monotonicity: 'increasing' | 'decreasing' | 'constant' | 'none';
-  quadrants: number[]; // e.g. [1, 2, 3]
+  quadrants: number[];
 
-  // Step-by-step
+  // Bilingual steps
   stepsZh: string[];
   stepsEn: string[];
 }
@@ -179,13 +179,10 @@ export function computeStandardForm(p1: Point, p2: Point): { a: number; b: numbe
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
 
-  // dy * (x - x1) - dx * (y - y1) = 0
-  // dy*x - dx*y + (dx*y1 - dy*x1) = 0
   let A = dy;
   let B = -dx;
   let C = dx * p1.y - dy * p1.x;
 
-  // If inputs are floats, multiply by a common factor
   const fA = toFraction(A);
   const fB = toFraction(B);
   const fC = toFraction(C);
@@ -210,7 +207,6 @@ export function computeStandardForm(p1: Point, p2: Point): { a: number; b: numbe
     C = -C;
   }
 
-  // Format eq
   let parts: string[] = [];
   if (A !== 0) {
     parts.push(A === 1 ? 'x' : A === -1 ? '-x' : `${A}x`);
@@ -233,7 +229,6 @@ export function computeStandardForm(p1: Point, p2: Point): { a: number; b: numbe
  * Formats y = kx + b cleanly
  */
 export function formatSlopeIntercept(kFrac: Fraction, bFrac: Fraction): { plain: string; latex: string } {
-  // k part
   let kStr = '';
   let kLatex = '';
   if (kFrac.value === 1) {
@@ -250,7 +245,6 @@ export function formatSlopeIntercept(kFrac: Fraction, bFrac: Fraction): { plain:
     kLatex = `${kFrac.latex}x`;
   }
 
-  // b part
   let bStr = '';
   let bLatex = '';
   if (bFrac.value !== 0) {
@@ -282,7 +276,7 @@ export function formatSlopeIntercept(kFrac: Fraction, bFrac: Fraction): { plain:
 /**
  * Calculates all mathematical properties from two points A(x1, y1) and B(x2, y2)
  */
-export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult {
+export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' = 'zh'): CalculationResult {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
 
@@ -293,12 +287,16 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
       p2,
       specialType: 'degenerate',
       isValid: false,
-      errorMessage: '两点坐标完全相同，过单点有无穷多条直线，无法确定唯一直线。(Two points are identical; infinite lines pass through a single point.)',
+      errorMessage: lang === 'zh'
+        ? '两点坐标完全相同，过单点有无穷多条直线，无法确定唯一直线。'
+        : 'Two points are identical; infinite lines pass through a single point.',
       hasSlope: false,
       hasYIntercept: false,
       hasXIntercept: false,
-      slopeInterceptEq: '无法确定 (Undefined)',
-      slopeInterceptEqLatex: '\\text{无法确定}',
+      bText: lang === 'zh' ? '无' : 'None',
+      xInterceptText: lang === 'zh' ? '无' : 'None',
+      slopeInterceptEq: lang === 'zh' ? '无法确定' : 'Undefined',
+      slopeInterceptEqLatex: '\\text{Undefined}',
       generalEq: 'N/A',
       pointSlopeEq: 'N/A',
       distance: 0,
@@ -318,7 +316,7 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
   const distance = Math.sqrt(distSquared);
   const distanceExact = Math.abs(distance - Math.round(distance)) < 1e-6
     ? Math.round(distance).toString()
-    : `√${formatNum(distSquared)} ≈ ${distance.toFixed(4)}`;
+    : `√${formatNum(distSquared)} ≈ ${distance.toFixed(3)}`;
 
   const midpoint: Point = {
     x: (p1.x + p2.x) / 2,
@@ -336,6 +334,14 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
     const hasYInt = Math.abs(xVal) < 1e-9;
     const yIntPt: Point | undefined = hasYInt ? { x: 0, y: 0, label: 'Y' } : undefined;
 
+    const bText = hasYInt
+      ? (lang === 'zh' ? '0 (与 Y 轴重合)' : '0 (Coincides with Y-Axis)')
+      : (lang === 'zh' ? '无交点 (平行于 Y 轴)' : 'None (Parallel to Y-Axis)');
+
+    const eqText = lang === 'zh'
+      ? `x = ${xFrac.text} (垂直直线，斜率不存在)`
+      : `x = ${xFrac.text} (Vertical line, slope undefined)`;
+
     return {
       p1,
       p2,
@@ -344,14 +350,14 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
       hasSlope: false,
       hasYIntercept: hasYInt,
       b: hasYInt ? 0 : undefined,
-      bText: hasYInt ? '0 (重合为 Y 轴)' : '无交点 (垂直平行于 Y 轴)',
+      bText,
       yInterceptPoint: yIntPt,
       hasXIntercept: true,
       xIntercept: xVal,
       xInterceptFraction: xFrac,
       xInterceptText: xFrac.text,
       xInterceptPoint: xInterceptPt,
-      slopeInterceptEq: `x = ${xFrac.text} (垂直于 x 轴，斜率不存在)`,
+      slopeInterceptEq: eqText,
       slopeInterceptEqLatex: `x = ${xFrac.latex}`,
       generalEq: std.eq,
       pointSlopeEq: `x = ${xFrac.text}`,
@@ -363,16 +369,33 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
       monotonicity: 'none',
       quadrants: xVal > 0 ? [1, 4] : xVal < 0 ? [2, 3] : [1, 2, 3, 4],
       stepsZh: [
-        `1. 观察横坐标：x₁ = ${p1.x}，x₂ = ${p2.x}，发现 x₁ = x₂。`,
-        `2. 当两点横坐标相等时，分母 x₂ - x₁ = 0，斜率 k 不存在（倾斜角 α = 90°）。`,
-        `3. 直线垂直于 x 轴（平行于 y 轴），因此该直线方程为垂直线形式：x = ${xFrac.text}。`,
-        `4. 与 x 轴交点为 (${xFrac.text}, 0)；${hasYInt ? '由于 x = 0，该直线与 y 轴重合。' : '与 y 轴无交点。'}`
+        `【步骤一：观察坐标特征】`,
+        `  x₁ = ${p1.x}，x₂ = ${p2.x}，两点横坐标相等 (x₁ = x₂)。`,
+        `  此时分母 Δx = x₂ - x₁ = 0，斜率 k 不存在（倾斜角 α = 90°）。`,
+        ``,
+        `【步骤二：确定直线方程】`,
+        `  直线垂直于 x 轴（平行于 y 轴），直线上所有点的横坐标均为 ${xFrac.text}。`,
+        `  👉 直线方程为：x = ${xFrac.text}`,
+        `  一般式方程：${std.eq}`,
+        ``,
+        `【步骤三：求与坐标轴交点】`,
+        `  与 x 轴交点为：(${xFrac.text}, 0)`,
+        `  ${hasYInt ? '因为 x = 0，该直线与 y 轴完全重合。' : '因为垂直于 x 轴且 x ≠ 0，与 y 轴没有交点。'}`
       ],
       stepsEn: [
-        `1. Compare x-coordinates: x₁ = ${p1.x}, x₂ = ${p2.x}. Notice x₁ = x₂.`,
-        `2. The difference in x is zero (Δx = 0). The slope is undefined (inclination angle α = 90°).`,
-        `3. The line is vertical (perpendicular to x-axis, parallel to y-axis). Equation is: x = ${xFrac.text}.`,
-        `4. X-intercept is (${xFrac.text}, 0). ${hasYInt ? 'The line coincides with the y-axis.' : 'There is no y-intercept.'}`
+        `[Step 1: Check Coordinate Properties]`,
+        `  x₁ = ${p1.x}, x₂ = ${p2.x}. The x-coordinates are identical (x₁ = x₂).`,
+        `  The change in x is zero (Δx = 0), so the slope is undefined (inclination angle α = 90°).`,
+        ``,
+        `[Step 2: Determine Line Equation]`,
+        `  The line is vertical (perpendicular to x-axis, parallel to y-axis).`,
+        `  Every point on the line has an x-coordinate of ${xFrac.text}.`,
+        `  👉 Equation: x = ${xFrac.text}`,
+        `  Standard Form: ${std.eq}`,
+        ``,
+        `[Step 3: Axis Intercepts]`,
+        `  X-Intercept: (${xFrac.text}, 0)`,
+        `  ${hasYInt ? 'Since x = 0, the line coincides with the y-axis.' : 'The line is parallel to the y-axis, so there is no y-intercept.'}`
       ]
     };
   }
@@ -387,7 +410,6 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
   const bFrac = toFraction(bVal);
   const bText = bFrac.text;
 
-  // Slope-intercept formatting
   const { plain: slopeInterceptEq, latex: slopeInterceptEqLatex } = formatSlopeIntercept(kFrac, bFrac);
 
   // Inclination angle
@@ -395,7 +417,6 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
   if (deg < 0) deg += 180;
   const rad = (deg * Math.PI) / 180;
 
-  // Y-intercept point
   const yInterceptPt: Point = { x: 0, y: bVal, label: 'Y-int' };
 
   // X-intercept: 0 = kx + b => x = -b/k
@@ -406,13 +427,12 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
   let xInterceptPt: Point | undefined;
 
   if (Math.abs(kVal) < 1e-9) {
-    // Horizontal line
     if (Math.abs(bVal) < 1e-9) {
       hasXInt = true;
-      xIntText = '与 x 轴重合 (无数交点)';
+      xIntText = lang === 'zh' ? '与 x 轴重合' : 'Coincides with X-Axis';
     } else {
       hasXInt = false;
-      xIntText = '无交点 (平行于 x 轴)';
+      xIntText = lang === 'zh' ? '无交点 (平行于 x 轴)' : 'None (Parallel to X-Axis)';
     }
   } else {
     xIntVal = -bVal / kVal;
@@ -427,24 +447,20 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
     triangleArea = 0.5 * Math.abs(xIntVal) * Math.abs(bVal);
   }
 
-  // Perpendicular slope
   let perpFrac: Fraction | undefined;
   if (Math.abs(kVal) > 1e-9) {
     perpFrac = toFraction(-1 / kVal);
   }
 
-  // Point-slope eq: y - y1 = k(x - x1)
   const y1Part = p1.y >= 0 ? `y - ${p1.y}` : `y + ${Math.abs(p1.y)}`;
   const x1Part = p1.x >= 0 ? `x - ${p1.x}` : `x + ${Math.abs(p1.x)}`;
   const pointSlopeEq = `${y1Part} = ${kFrac.text}(${x1Part})`;
 
-  // Two-intercept form: x/a + y/b = 1
   let twoInterceptEq: string | undefined;
   if (xIntVal !== undefined && Math.abs(xIntVal) > 1e-9 && Math.abs(bVal) > 1e-9) {
     twoInterceptEq = `x / (${xIntFrac?.text}) + y / (${bFrac.text}) = 1`;
   }
 
-  // Special line classification
   let specialType: LineSpecialType = 'general';
   if (Math.abs(kVal) < 1e-9) {
     specialType = 'horizontal';
@@ -452,12 +468,10 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
     specialType = 'direct-proportion';
   }
 
-  // Monotonicity
   let monotonicity: 'increasing' | 'decreasing' | 'constant' | 'none' = 'constant';
   if (kVal > 1e-9) monotonicity = 'increasing';
   else if (kVal < -1e-9) monotonicity = 'decreasing';
 
-  // Quadrants passed through
   const quads: number[] = [];
   if (specialType === 'horizontal') {
     if (bVal > 0) quads.push(1, 2);
@@ -473,7 +487,6 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
     else if (kVal < 0 && bVal < 0) quads.push(2, 3, 4);
   }
 
-  // Detailed Step by Step Derivation (Bilingual)
   const stepsZh = [
     `【步骤一：计算直线的斜率 k】`,
     `  根据两点斜率公式：k = (y₂ - y₁) / (x₂ - x₁)`,
@@ -482,12 +495,12 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
     ``,
     `【步骤二：求 y 轴截距 b（待定系数法）】`,
     `  设一次函数解析式为：y = kx + b`,
-    `  将斜率 k = ${kFrac.text} 以及已知点 A(${p1.x}, ${p1.y}) 代入方程：`,
+    `  将斜率 k = ${kFrac.text} 与已知点 A(${p1.x}, ${p1.y}) 代入方程：`,
     `  ${p1.y} = (${kFrac.text}) × (${p1.x}) + b`,
-    `  计算移项解得截距：b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(4)})`}`,
+    `  解得截距：b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(4)})`}`,
     ``,
     `【步骤三：得出最终一次函数解析式】`,
-    `  将求得的 k 与 b 代入 y = kx + b：`,
+    `  将 k 与 b 代入 y = kx + b：`,
     `  👉 ${slopeInterceptEq}`,
     `  整理为一般式方程：${std.eq}`,
     ``,
@@ -498,23 +511,23 @@ export function calculateFromTwoPoints(p1: Point, p2: Point): CalculationResult 
 
   const stepsEn = [
     `[Step 1: Calculate the Slope k (m)]`,
-    `  Using the two-point slope formula: m = (y₂ - y₁) / (x₂ - x₁)`,
+    `  Using two-point slope formula: m = (y₂ - y₁) / (x₂ - x₁)`,
     `  Substituting point A(${p1.x}, ${p1.y}) and point B(${p2.x}, ${p2.y}):`,
     `  m = (${p2.y} - ${p1.y}) / (${p2.x} - ${p1.x}) = ${dy} / ${dx} = ${kFrac.text} ${kFrac.isInteger ? '' : `(≈ ${kVal.toFixed(4)})`}`,
     ``,
     `[Step 2: Solve for Y-Intercept b]`,
-    `  Substitute slope m = ${kFrac.text} and point A(${p1.x}, ${p1.y}) into y = mx + b:`,
+    `  Using slope-intercept form y = mx + b with point A(${p1.x}, ${p1.y}):`,
     `  ${p1.y} = (${kFrac.text}) × (${p1.x}) + b`,
     `  Rearranging to solve for b: b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(4)})`}`,
     ``,
-    `[Step 3: Write the Final Equation]`,
-    `  Combining slope and intercept into slope-intercept form:`,
+    `[Step 3: Write Final Line Equation]`,
+    `  Substituting m and b into y = mx + b:`,
     `  👉 ${slopeInterceptEq}`,
-    `  Standard form (Ax + By + C = 0): ${std.eq}`,
+    `  Standard Form (Ax + By + C = 0): ${std.eq}`,
     ``,
     `[Step 4: Find Axis Intercepts]`,
-    `  1. Y-intercept: Set x = 0, y = ${bFrac.text} → (0, ${bFrac.text})`,
-    `  2. X-intercept: Set y = 0, 0 = (${kFrac.text})x + (${bFrac.text}) → x = ${xIntText} → (${xIntText}, 0)`
+    `  1. Y-intercept: Set x = 0 → y = ${bFrac.text} → Point (0, ${bFrac.text})`,
+    `  2. X-intercept: Set y = 0 → 0 = (${kFrac.text})x + (${bFrac.text}) → x = ${xIntText} → Point (${xIntText}, 0)`
   ];
 
   return {

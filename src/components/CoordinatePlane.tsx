@@ -147,7 +147,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       const pO = toScreen(0, 0);
 
       ctx.save();
-      ctx.fillStyle = 'rgba(79, 70, 229, 0.08)'; // Light Indigo
+      ctx.fillStyle = 'rgba(79, 70, 229, 0.08)';
       ctx.beginPath();
       ctx.moveTo(pO.sx, pO.sy);
       ctx.lineTo(pX.sx, pX.sy);
@@ -160,7 +160,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
     // 5. Draw the Linear Function Line
     if (result.isValid) {
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = '#4f46e5'; // Indigo-600
+      ctx.strokeStyle = '#4f46e5';
       ctx.beginPath();
 
       if (result.specialType === 'vertical') {
@@ -184,10 +184,9 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
     }
 
     // 6. Draw Intercepts
-    // X Intercept
     if (result.xInterceptPoint && Math.abs(result.xInterceptPoint.x) > 1e-4) {
       const { sx, sy } = toScreen(result.xInterceptPoint.x, 0);
-      ctx.fillStyle = '#059669'; // Emerald-600
+      ctx.fillStyle = '#059669';
       ctx.beginPath();
       ctx.arc(sx, sy, 5, 0, Math.PI * 2);
       ctx.fill();
@@ -205,10 +204,9 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       );
     }
 
-    // Y Intercept
     if (result.yInterceptPoint && (result.xInterceptPoint?.x !== 0 || result.yInterceptPoint.y !== 0)) {
       const { sx, sy } = toScreen(0, result.yInterceptPoint.y);
-      ctx.fillStyle = '#d97706'; // Amber-600
+      ctx.fillStyle = '#d97706';
       ctx.beginPath();
       ctx.arc(sx, sy, 5, 0, Math.PI * 2);
       ctx.fill();
@@ -226,28 +224,24 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       );
     }
 
-    // 7. Draw Control Points A & B (Draggable)
+    // 7. Draw Control Points A & B
     const drawControlPoint = (pt: Point, color: string, label: string) => {
       const { sx, sy } = toScreen(pt.x, pt.y);
 
-      // Outer ring
       ctx.beginPath();
       ctx.arc(sx, sy, 8, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
 
-      // Inner white center
       ctx.beginPath();
       ctx.arc(sx, sy, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // Shadow border
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      // Label badge
       ctx.font = 'bold 12px sans-serif';
       ctx.fillStyle = '#1e293b';
       ctx.textAlign = 'left';
@@ -391,7 +385,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
           <span className="font-medium">
             {lang === 'zh'
               ? '按住并拖拽点 A 或点 B 实时联动'
-              : 'Drag Point A / B directly on canvas'}
+              : 'Drag Point A / B to update in real time'}
           </span>
         </div>
       </div>
@@ -401,21 +395,21 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
         <button
           onClick={() => handleZoom(1.25)}
           title={lang === 'zh' ? '放大' : 'Zoom In'}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <ZoomIn className="h-4 w-4" />
         </button>
         <button
           onClick={() => handleZoom(0.8)}
           title={lang === 'zh' ? '缩小' : 'Zoom Out'}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <ZoomOut className="h-4 w-4" />
         </button>
         <button
           onClick={handleReset}
           title={lang === 'zh' ? '重置中心原点' : 'Reset View'}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <RotateCcw className="h-4 w-4" />
         </button>
@@ -423,7 +417,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
         <button
           onClick={handleExportPNG}
           title={lang === 'zh' ? '导出高清图片 (PNG)' : 'Export PNG'}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <Download className="h-4 w-4" />
         </button>
@@ -441,27 +435,27 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
         />
       </div>
 
-      {/* Canvas Bottom Legend Bar */}
+      {/* Canvas Bottom Legend Bar (Fully Bilingual) */}
       <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-2">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5 font-medium">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-            <strong className="text-slate-800">点 A:</strong> ({result.p1.x}, {result.p1.y})
+            <strong className="text-slate-800">{lang === 'zh' ? '点 A:' : 'Point A:'}</strong> ({result.p1.x}, {result.p1.y})
           </span>
           <span className="flex items-center gap-1.5 font-medium">
             <span className="h-2.5 w-2.5 rounded-full bg-pink-600" />
-            <strong className="text-slate-800">点 B:</strong> ({result.p2.x}, {result.p2.y})
+            <strong className="text-slate-800">{lang === 'zh' ? '点 B:' : 'Point B:'}</strong> ({result.p2.x}, {result.p2.y})
           </span>
           {result.xInterceptPoint && (
             <span className="flex items-center gap-1.5 font-medium">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-              <strong className="text-slate-800">X轴交点:</strong> ({result.xInterceptFraction?.text ?? result.xInterceptPoint.x.toFixed(1)}, 0)
+              <strong className="text-slate-800">{lang === 'zh' ? 'X轴交点:' : 'X-Intercept:'}</strong> ({result.xInterceptFraction?.text ?? result.xInterceptPoint.x.toFixed(1)}, 0)
             </span>
           )}
           {result.yInterceptPoint && (
             <span className="flex items-center gap-1.5 font-medium">
               <span className="h-2.5 w-2.5 rounded-full bg-amber-600" />
-              <strong className="text-slate-800">Y轴交点:</strong> (0, {result.bFraction?.text ?? result.yInterceptPoint.y.toFixed(1)})
+              <strong className="text-slate-800">{lang === 'zh' ? 'Y轴交点:' : 'Y-Intercept:'}</strong> (0, {result.bFraction?.text ?? result.yInterceptPoint.y.toFixed(1)})
             </span>
           )}
         </div>
