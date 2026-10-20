@@ -225,7 +225,7 @@ export function computeStandardForm(p1: Point, p2: Point): { a: number; b: numbe
     parts.push(`${sign}${Math.abs(C)}`);
   }
 
-  const eq = `${parts.join(' ')} = 0`;
+  const eq = parts.length > 0 ? `${parts.join(' ')} = 0` : '0 = 0';
   return { a: A, b: B, c: C, eq };
 }
 
