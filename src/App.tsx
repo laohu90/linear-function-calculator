@@ -1,3 +1,4 @@
+import { SupportedLang, resolveInitialLanguage } from './i18n/translations';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -103,15 +104,22 @@ const BILINGUAL_SEO_KEYWORDS = {
 
 export default function App() {
   // Read language from URL params or navigator
-  const [lang, setLang] = useState<'zh' | 'en'>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlLang = params.get('lang');
-      if (urlLang === 'en' || urlLang === 'zh') return urlLang;
-      if (navigator.language && !navigator.language.startsWith('zh')) return 'en';
-    }
-    return 'zh';
+  const [langState, setLangState] = useState<{ currentLang: SupportedLang; isAuto: boolean }>(() => {
+    const init = resolveInitialLanguage();
+    return { currentLang: init.lang, isAuto: init.isAuto };
   });
+  const lang = (langState.currentLang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
+  const isAuto = langState.isAuto;
+  const setLang = (newLang: 'en' | 'zh') => {
+    setLangState({ currentLang: newLang, isAuto: false });
+    try {
+      localStorage.setItem('linear_func_user_chosen_lang_v3', newLang);
+      localStorage.removeItem('linear_func_lang');
+    } catch {}
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', newLang);
+    window.history.pushState({}, '', url.toString());
+  };
 
   // Synchronize URL and Document Title for Google SEO
   useEffect(() => {
