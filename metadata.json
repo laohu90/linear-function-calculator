@@ -1,6 +1,8 @@
 {
-  "name": "Project Studio",
-  "description": "智能项目开发与原型工作台，支持快速构建全栈应用与创意工具。",
+  "name": "Linear Function Calculator",
+  "description": "专业一次函数计算器与解析式生成器，支持两点求直线方程、精度控制、输入实时校验、交互式图像、分步详解与教学PDF导出。",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

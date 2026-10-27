@@ -104,12 +104,24 @@ export function toFraction(val: number, tolerance = 1e-6): Fraction {
   };
 }
 
-export function formatNum(n: number, decimals = 4): string {
-  if (Math.abs(n - Math.round(n)) < 1e-6) {
+export function formatNum(n: number, decimals = 3): string {
+  if (isNaN(n) || !isFinite(n)) return '—';
+  if (Math.abs(n - Math.round(n)) < 1e-9) {
+    return Math.round(n).toString();
+  }
+  if (decimals === 0) {
     return Math.round(n).toString();
   }
   const str = n.toFixed(decimals);
   return str.replace(/\.?0+$/, '');
+}
+
+export function formatWithDecimals(n: number, decimals = 3): string {
+  if (isNaN(n) || !isFinite(n)) return '—';
+  if (Math.abs(n - Math.round(n)) < 1e-9) {
+    return Math.round(n).toString();
+  }
+  return n.toFixed(decimals);
 }
 
 export interface Point {
@@ -280,7 +292,12 @@ export function formatSlopeIntercept(kFrac: Fraction, bFrac: Fraction): { plain:
 /**
  * Calculates all mathematical properties from two points A(x1, y1) and B(x2, y2)
  */
-export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' = 'zh'): CalculationResult {
+export function calculateFromTwoPoints(
+  p1: Point,
+  p2: Point,
+  lang: 'zh' | 'en' = 'zh',
+  decimals: number = 3
+): CalculationResult {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
 
@@ -330,7 +347,7 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
   const distance = Math.sqrt(distSquared);
   const distanceExact = Math.abs(distance - Math.round(distance)) < 1e-6
     ? Math.round(distance).toString()
-    : `√${formatNum(distSquared)} ≈ ${distance.toFixed(3)}`;
+    : `√${formatNum(distSquared, decimals)} ≈ ${distance.toFixed(decimals)}`;
 
   const midpoint: Point = {
     x: (p1.x + p2.x) / 2,
@@ -521,13 +538,13 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
     `【步骤一：计算直线的斜率 k】`,
     `  根据两点斜率公式：k = (y₂ - y₁) / (x₂ - x₁)`,
     `  代入两点坐标 A(${p1.x}, ${p1.y}) 与 B(${p2.x}, ${p2.y})：`,
-    `  k = (${p2.y} - ${p1.y}) / (${p2.x} - ${p1.x}) = ${dy} / ${dx} = ${kFrac.text} ${kFrac.isInteger ? '' : `(≈ ${kVal.toFixed(4)})`}`,
+    `  k = (${p2.y} - ${p1.y}) / (${p2.x} - ${p1.x}) = ${dy} / ${dx} = ${kFrac.text} ${kFrac.isInteger ? '' : `(≈ ${kVal.toFixed(decimals)})`}`,
     ``,
     `【步骤二：求 y 轴截距 b（待定系数法）】`,
     `  设一次函数解析式为：y = kx + b`,
     `  将斜率 k = ${kFrac.text} 与已知点 A(${p1.x}, ${p1.y}) 代入方程：`,
     `  ${p1.y} = (${kFrac.text}) × (${p1.x}) + b`,
-    `  解得截距：b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(4)})`}`,
+    `  解得截距：b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(decimals)})`}`,
     ``,
     `【步骤三：得出最终一次函数解析式】`,
     `  将 k 与 b 代入 y = kx + b：`,
@@ -536,19 +553,19 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
     ``,
     `【步骤四：求解与坐标轴的交点】`,
     `  1. 与 y 轴交点：令 x = 0，得 y = b = ${bFrac.text}，交点坐标为 (0, ${bFrac.text})。`,
-    `  2. 与 x 轴交点：令 y = 0，得 0 = (${kFrac.text})x + (${bFrac.text})，解得 x = -b/k = ${xIntText}，交点坐标为 (${xIntText}, 0)。`
+    `  2. 与 x 轴交点：令 y = 0，得 0 = (${kFrac.text})x + (${bFrac.text})，解得 x = -b/k = ${xIntText}${xIntVal !== undefined && !xIntFrac?.isInteger ? ` (≈ ${xIntVal.toFixed(decimals)})` : ''}，交点坐标为 (${xIntText}, 0)。`
   ];
 
   const stepsEn = [
     `[Step 1: Calculate the Slope k (m)]`,
     `  Using two-point slope formula: m = (y₂ - y₁) / (x₂ - x₁)`,
     `  Substituting point A(${p1.x}, ${p1.y}) and point B(${p2.x}, ${p2.y}):`,
-    `  m = (${p2.y} - ${p1.y}) / (${p2.x} - ${p1.x}) = ${dy} / ${dx} = ${kFrac.text} ${kFrac.isInteger ? '' : `(≈ ${kVal.toFixed(4)})`}`,
+    `  m = (${p2.y} - ${p1.y}) / (${p2.x} - ${p1.x}) = ${dy} / ${dx} = ${kFrac.text} ${kFrac.isInteger ? '' : `(≈ ${kVal.toFixed(decimals)})`}`,
     ``,
     `[Step 2: Solve for Y-Intercept b]`,
     `  Using slope-intercept form y = mx + b with point A(${p1.x}, ${p1.y}):`,
     `  ${p1.y} = (${kFrac.text}) × (${p1.x}) + b`,
-    `  Rearranging to solve for b: b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(4)})`}`,
+    `  Rearranging to solve for b: b = ${p1.y} - (${kFrac.text}) × (${p1.x}) = ${bFrac.text} ${bFrac.isInteger ? '' : `(≈ ${bVal.toFixed(decimals)})`}`,
     ``,
     `[Step 3: Write Final Line Equation]`,
     `  Substituting m and b into y = mx + b:`,
@@ -557,7 +574,7 @@ export function calculateFromTwoPoints(p1: Point, p2: Point, lang: 'zh' | 'en' =
     ``,
     `[Step 4: Find Axis Intercepts]`,
     `  1. Y-intercept: Set x = 0 → y = ${bFrac.text} → Point (0, ${bFrac.text})`,
-    `  2. X-intercept: Set y = 0 → 0 = (${kFrac.text})x + (${bFrac.text}) → x = ${xIntText} → Point (${xIntText}, 0)`
+    `  2. X-intercept: Set y = 0 → 0 = (${kFrac.text})x + (${bFrac.text}) → x = ${xIntText}${xIntVal !== undefined && !xIntFrac?.isInteger ? ` (≈ ${xIntVal.toFixed(decimals)})` : ''} → Point (${xIntText}, 0)`
   ];
 
   return {

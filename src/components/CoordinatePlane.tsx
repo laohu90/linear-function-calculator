@@ -3,19 +3,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { CalculationResult, Point } from '../utils/linearMath';
-import { ZoomIn, ZoomOut, RotateCcw, Download, Crosshair, Magnet, AlertCircle } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Download, Magnet, FileDown, AlertTriangle, Edit3 } from 'lucide-react';
 
-interface CoordinatePlaneProps {
-  result: CalculationResult;
-  onPointChange: (p1: Point, p2: Point) => void;
-  lang: 'zh' | 'en';
+export interface CoordinatePlaneHandle {
+  getCanvas: () => HTMLCanvasElement | null;
 }
 
-export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPointChange, lang }) => {
+interface CoordinatePlaneProps {
+  result: CalculationResult | null;
+  status: 'ready' | 'empty' | 'invalid' | 'degenerate';
+  errorMessage?: string;
+  onPointChange: (p1: Point, p2: Point) => void;
+  lang: 'zh' | 'en';
+  onExportPDF?: () => void;
+}
+
+export const CoordinatePlane = forwardRef<CoordinatePlaneHandle, CoordinatePlaneProps>(({
+  result,
+  status,
+  errorMessage,
+  onPointChange,
+  lang,
+  onExportPDF
+}, ref) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    getCanvas: () => canvasRef.current
+  }));
 
   // Viewport scale & offset
   const [scale, setScale] = useState<number>(38); // pixels per unit
@@ -76,6 +94,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       ctx.moveTo(sx, 0);
       ctx.lineTo(sx, height);
     }
+
     for (let y = minY; y <= maxY; y += gridStep) {
       if (Math.abs(y) < 1e-6) continue;
       const { sy } = toScreen(0, y);
@@ -84,36 +103,33 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
     }
     ctx.stroke();
 
-    // 3. Draw Major Axes (Slate-600)
+    // 3. Draw Main Axes (X & Y Axis)
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#64748b';
+    ctx.strokeStyle = '#94a3b8';
     ctx.beginPath();
+
     // X Axis
     ctx.moveTo(0, originY);
     ctx.lineTo(width, originY);
+
+    // X Arrow
+    ctx.moveTo(width - 8, originY - 4);
+    ctx.lineTo(width, originY);
+    ctx.lineTo(width - 8, originY + 4);
+
     // Y Axis
-    ctx.moveTo(originX, 0);
-    ctx.lineTo(originX, height);
+    ctx.moveTo(originX, height);
+    ctx.lineTo(originX, 0);
+
+    // Y Arrow
+    ctx.moveTo(originX - 4, 8);
+    ctx.lineTo(originX, 0);
+    ctx.lineTo(originX + 4, 8);
     ctx.stroke();
 
-    // Arrows on Axes
-    ctx.fillStyle = '#475569';
-    // X Arrow
-    ctx.beginPath();
-    ctx.moveTo(width - 5, originY - 4);
-    ctx.lineTo(width, originY);
-    ctx.lineTo(width - 5, originY + 4);
-    ctx.fill();
-    // Y Arrow
-    ctx.beginPath();
-    ctx.moveTo(originX - 4, 5);
-    ctx.lineTo(originX, 0);
-    ctx.lineTo(originX + 4, 5);
-    ctx.fill();
-
-    // Tick labels and numbers
-    ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+    // Axis Tick Numbers
     ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px ui-monospace, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -135,12 +151,102 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       }
     }
 
-    // Origin label '0' & Axis names 'x', 'y'
+    // Origin label 'O' & Axis names 'x', 'y'
     ctx.fillStyle = '#64748b';
     ctx.font = 'bold 11px sans-serif';
     ctx.fillText('O', originX - 8, originY + 6);
     ctx.fillText('x', width - 8, originY + 8);
     ctx.fillText('y', originX + 12, 10);
+
+    // If calculation status is EMPTY or INVALID, draw pedagogical guidance overlay
+    if (status === 'empty' || !result) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.fillRect(0, 0, width, height);
+
+      // Card
+      const cardW = Math.min(360, width - 40);
+      const cardH = 110;
+      const cardX = (width - cardW) / 2;
+      const cardY = (height - cardH) / 2;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#475569';
+      ctx.font = 'bold 14px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        lang === 'zh' ? '请填写完整四个坐标数值' : 'Please Enter All 4 Coordinates',
+        width / 2,
+        cardY + 42
+      );
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px -apple-system, sans-serif';
+      ctx.fillText(
+        lang === 'zh' ? '输入点 A 与点 B 坐标后，此处将自动绘制函数图象' : 'Enter Point A and Point B to plot the line equation',
+        width / 2,
+        cardY + 72
+      );
+
+      ctx.restore();
+      return;
+    }
+
+    if (status === 'invalid') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.fillRect(0, 0, width, height);
+
+      const cardW = Math.min(360, width - 40);
+      const cardH = 110;
+      const cardX = (width - cardW) / 2;
+      const cardY = (height - cardH) / 2;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(239, 68, 68, 0.12)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#b91c1c';
+      ctx.font = 'bold 14px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        lang === 'zh' ? '坐标输入存在格式错误' : 'Invalid Coordinate Format',
+        width / 2,
+        cardY + 42
+      );
+
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '12px -apple-system, sans-serif';
+      ctx.fillText(
+        errorMessage || (lang === 'zh' ? '检测到非数字字符，请修正标红输入框' : 'Please correct highlighted non-numeric fields'),
+        width / 2,
+        cardY + 72
+      );
+
+      ctx.restore();
+      return;
+    }
 
     // 4. Highlight Triangle with axes (if applicable)
     if (result.triangleAreaWithAxes && result.xInterceptPoint && result.yInterceptPoint) {
@@ -270,13 +376,13 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       ctx.textAlign = 'left';
       ctx.fillText(
         `Y(0, ${result.bFraction?.text ?? result.yInterceptPoint.y.toFixed(1)})`,
-        sx + 8,
+        sx + 10,
         sy + 4
       );
     }
 
     // 8. Draw Midpoint M
-    if (result.isValid && result.midpoint) {
+    if (result.isValid) {
       const { sx, sy } = toScreen(result.midpoint.x, result.midpoint.y);
       ctx.fillStyle = '#6366f1';
       ctx.beginPath();
@@ -325,7 +431,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
         height - 12
       );
     }
-  }, [offset, scale, result, mouseCoord, showAuxLines]);
+  }, [offset, scale, result, mouseCoord, showAuxLines, status, errorMessage, lang]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -368,79 +474,129 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
     };
   };
 
-  const processDragStart = (sx: number, sy: number) => {
+  const toScreenCoord = (mx: number, my: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
+    if (!canvas) return { sx: 0, sy: 0 };
     const originX = canvas.width / 2 + offset.x;
     const originY = canvas.height / 2 + offset.y;
+    return {
+      sx: originX + mx * scale,
+      sy: originY - my * scale
+    };
+  };
 
-    const sA = { sx: originX + result.p1.x * scale, sy: originY - result.p1.y * scale };
-    const sB = { sx: originX + result.p2.x * scale, sy: originY - result.p2.y * scale };
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!result || status !== 'ready') return;
+    const { x, y } = getCanvasMousePos(e.clientX, e.clientY);
+    const p1Screen = toScreenCoord(result.p1.x, result.p1.y);
+    const p2Screen = toScreenCoord(result.p2.x, result.p2.y);
 
-    const distA = Math.hypot(sx - sA.sx, sy - sA.sy);
-    const distB = Math.hypot(sx - sB.sx, sy - sB.sy);
+    const distP1 = Math.hypot(x - p1Screen.sx, y - p1Screen.sy);
+    const distP2 = Math.hypot(x - p2Screen.sx, y - p2Screen.sy);
 
-    if (distA <= 18) {
+    if (distP1 < 16) {
       setDraggingPoint('p1');
-    } else if (distB <= 18) {
+    } else if (distP2 < 16) {
       setDraggingPoint('p2');
     } else {
       setDraggingPoint('pan');
-      setDragStart({ mouseX: sx - offset.x, mouseY: sy - offset.y });
+      setDragStart({ mouseX: e.clientX, mouseY: e.clientY });
     }
-  };
-
-  const processDragMove = (sx: number, sy: number) => {
-    const mathPos = getMathCoordinates(sx, sy);
-    setMouseCoord(mathPos);
-
-    if (draggingPoint === 'pan') {
-      setOffset({
-        x: sx - dragStart.mouseX,
-        y: sy - dragStart.mouseY
-      });
-    } else if (draggingPoint === 'p1') {
-      const targetX = snapToGrid ? Math.round(mathPos.x * 2) / 2 : mathPos.x;
-      const targetY = snapToGrid ? Math.round(mathPos.y * 2) / 2 : mathPos.y;
-      onPointChange({ x: targetX, y: targetY }, result.p2);
-    } else if (draggingPoint === 'p2') {
-      const targetX = snapToGrid ? Math.round(mathPos.x * 2) / 2 : mathPos.x;
-      const targetY = snapToGrid ? Math.round(mathPos.y * 2) / 2 : mathPos.y;
-      onPointChange(result.p1, { x: targetX, y: targetY });
-    }
-  };
-
-  // Mouse handlers
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { x: sx, y: sy } = getCanvasMousePos(e.clientX, e.clientY);
-    processDragStart(sx, sy);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { x: sx, y: sy } = getCanvasMousePos(e.clientX, e.clientY);
-    processDragMove(sx, sy);
+    const { x, y } = getCanvasMousePos(e.clientX, e.clientY);
+    const math = getMathCoordinates(x, y);
+    setMouseCoord(math);
+
+    if (!draggingPoint) return;
+
+    if (draggingPoint === 'pan') {
+      const dx = e.clientX - dragStart.mouseX;
+      const dy = e.clientY - dragStart.mouseY;
+      setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+      setDragStart({ mouseX: e.clientX, mouseY: e.clientY });
+      return;
+    }
+
+    if (!result) return;
+
+    let targetX = math.x;
+    let targetY = math.y;
+
+    if (snapToGrid) {
+      targetX = Math.round(targetX);
+      targetY = Math.round(targetY);
+    } else {
+      targetX = Math.round(targetX * 10) / 10;
+      targetY = Math.round(targetY * 10) / 10;
+    }
+
+    if (draggingPoint === 'p1') {
+      onPointChange({ x: targetX, y: targetY }, result.p2);
+    } else if (draggingPoint === 'p2') {
+      onPointChange(result.p1, { x: targetX, y: targetY });
+    }
   };
 
   const handleMouseUp = () => {
     setDraggingPoint(null);
   };
 
-  // Touch handlers for mobile / tablet support
+  // Touch Support for Mobile Dragging
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!result || status !== 'ready') return;
     if (e.touches.length === 1) {
       const touch = e.touches[0];
-      const { x: sx, y: sy } = getCanvasMousePos(touch.clientX, touch.clientY);
-      processDragStart(sx, sy);
+      const { x, y } = getCanvasMousePos(touch.clientX, touch.clientY);
+      const p1Screen = toScreenCoord(result.p1.x, result.p1.y);
+      const p2Screen = toScreenCoord(result.p2.x, result.p2.y);
+
+      const distP1 = Math.hypot(x - p1Screen.sx, y - p1Screen.sy);
+      const distP2 = Math.hypot(x - p2Screen.sx, y - p2Screen.sy);
+
+      if (distP1 < 26) {
+        setDraggingPoint('p1');
+      } else if (distP2 < 26) {
+        setDraggingPoint('p2');
+      } else {
+        setDraggingPoint('pan');
+        setDragStart({ mouseX: touch.clientX, mouseY: touch.clientY });
+      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length === 1) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const { x: sx, y: sy } = getCanvasMousePos(touch.clientX, touch.clientY);
-      processDragMove(sx, sy);
+    if (!draggingPoint || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const { x, y } = getCanvasMousePos(touch.clientX, touch.clientY);
+    const math = getMathCoordinates(x, y);
+
+    if (draggingPoint === 'pan') {
+      const dx = touch.clientX - dragStart.mouseX;
+      const dy = touch.clientY - dragStart.mouseY;
+      setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+      setDragStart({ mouseX: touch.clientX, mouseY: touch.clientY });
+      return;
+    }
+
+    if (!result) return;
+
+    let targetX = math.x;
+    let targetY = math.y;
+
+    if (snapToGrid) {
+      targetX = Math.round(targetX);
+      targetY = Math.round(targetY);
+    } else {
+      targetX = Math.round(targetX * 10) / 10;
+      targetY = Math.round(targetY * 10) / 10;
+    }
+
+    if (draggingPoint === 'p1') {
+      onPointChange({ x: targetX, y: targetY }, result.p2);
+    } else if (draggingPoint === 'p2') {
+      onPointChange(result.p1, { x: targetX, y: targetY });
     }
   };
 
@@ -461,41 +617,20 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
     const canvas = canvasRef.current;
     if (!canvas) return;
     const link = document.createElement('a');
-    link.download = `linear_function_${result.slopeInterceptEq.replace(/\s+/g, '_')}.png`;
+    const eqLabel = result?.slopeInterceptEq ? result.slopeInterceptEq.replace(/\s+/g, '_') : 'linear_graph';
+    link.download = `linear_function_${eqLabel}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   };
 
   return (
-    <div className="relative w-full h-[400px] sm:h-[480px] rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm flex flex-col select-none">
-      {/* Degenerate Warning Alert if points are identical */}
-      {!result.isValid && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 bg-rose-50 border border-rose-200 text-rose-800 text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-          <span>
-            {lang === 'zh'
-              ? '两点重合，无法确定唯一直线。请拖拽或修改任意一点。'
-              : 'Points coincide; infinite lines pass through. Please move a point.'}
-          </span>
-        </div>
-      )}
-
-      {/* Floating hints on canvas */}
-      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-2">
-        <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-sm border border-slate-200 text-xs flex items-center gap-2 text-slate-700 shadow-sm">
-          <Crosshair className="h-3.5 w-3.5 text-indigo-600" />
-          <span className="font-medium">
-            {lang === 'zh'
-              ? '按住并拖拽点 A 或点 B 实时联动'
-              : 'Drag Point A / B to update in real time'}
-          </span>
-        </div>
-
-        {/* Snap to grid toggle button */}
+    <div className="relative w-full h-[400px] sm:h-[480px] rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs flex flex-col select-none">
+      {/* Floating Status or Magnet Pill */}
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
         <button
           onClick={() => setSnapToGrid(!snapToGrid)}
-          title={lang === 'zh' ? '切换吸附网格 (0.5精度)' : 'Toggle Grid Snap (0.5 Step)'}
-          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm ${
+          title={lang === 'zh' ? '拖拽点吸附整数网格' : 'Snap points to integer grid'}
+          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
             snapToGrid
               ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
               : 'bg-white/95 border-slate-200 text-slate-500 hover:text-slate-800'
@@ -509,7 +644,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
         <button
           onClick={() => setShowAuxLines(!showAuxLines)}
           title={lang === 'zh' ? '显示平行线与垂直平分线' : 'Show Parallel & Perpendicular Lines'}
-          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm ${
+          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
             showAuxLines
               ? 'bg-purple-50 border-purple-200 text-purple-700'
               : 'bg-white/95 border-slate-200 text-slate-500 hover:text-slate-800'
@@ -520,7 +655,7 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
       </div>
 
       {/* Floating Controls */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/95 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-sm">
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/95 backdrop-blur-xs p-1 rounded-xl border border-slate-200 shadow-xs">
         <button
           onClick={() => handleZoom(1.25)}
           title={lang === 'zh' ? '放大' : 'Zoom In'}
@@ -543,6 +678,20 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
           <RotateCcw className="h-4 w-4" />
         </button>
         <div className="w-[1px] h-4 bg-slate-200 mx-0.5" />
+        
+        {/* PDF Export Button */}
+        {onExportPDF && (
+          <button
+            onClick={onExportPDF}
+            title={lang === 'zh' ? '导出教学解题卡 (PDF)' : 'Export Solution Worksheet (PDF)'}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-indigo-600 hover:bg-indigo-50 font-semibold text-xs transition-colors cursor-pointer"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">PDF</span>
+          </button>
+        )}
+
+        {/* PNG Export Button */}
         <button
           onClick={handleExportPNG}
           title={lang === 'zh' ? '导出高清图片 (PNG)' : 'Export PNG'}
@@ -572,33 +721,49 @@ export const CoordinatePlane: React.FC<CoordinatePlaneProps> = ({ result, onPoin
 
       {/* Canvas Bottom Legend Bar */}
       <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-2">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-            <strong className="text-slate-800">{lang === 'zh' ? '点 A:' : 'Point A:'}</strong> ({result.p1.x}, {result.p1.y})
-          </span>
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="h-2.5 w-2.5 rounded-full bg-pink-600" />
-            <strong className="text-slate-800">{lang === 'zh' ? '点 B:' : 'Point B:'}</strong> ({result.p2.x}, {result.p2.y})
-          </span>
-          {result.xInterceptPoint && (
-            <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-              <strong className="text-slate-800">{lang === 'zh' ? 'X轴交点:' : 'X-Intercept:'}</strong> ({result.xInterceptFraction?.text ?? result.xInterceptPoint.x.toFixed(1)}, 0)
-            </span>
-          )}
-          {result.yInterceptPoint && (
-            <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-600" />
-              <strong className="text-slate-800">{lang === 'zh' ? 'Y轴交点:' : 'Y-Intercept:'}</strong> (0, {result.bFraction?.text ?? result.yInterceptPoint.y.toFixed(1)})
-            </span>
-          )}
-        </div>
+        {status === 'ready' && result ? (
+          <>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                <strong className="text-slate-800">{lang === 'zh' ? '点 A:' : 'Point A:'}</strong> ({result.p1.x}, {result.p1.y})
+              </span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="h-2.5 w-2.5 rounded-full bg-pink-600" />
+                <strong className="text-slate-800">{lang === 'zh' ? '点 B:' : 'Point B:'}</strong> ({result.p2.x}, {result.p2.y})
+              </span>
+              {result.xInterceptPoint && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                  <strong className="text-slate-800">{lang === 'zh' ? 'X轴交点:' : 'X-Intercept:'}</strong> ({result.xInterceptFraction?.text ?? result.xInterceptPoint.x.toFixed(1)}, 0)
+                </span>
+              )}
+              {result.yInterceptPoint && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-600" />
+                  <strong className="text-slate-800">{lang === 'zh' ? 'Y轴交点:' : 'Y-Intercept:'}</strong> (0, {result.bFraction?.text ?? result.yInterceptPoint.y.toFixed(1)})
+                </span>
+              )}
+            </div>
 
-        <div className="font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-          {result.slopeInterceptEq}
-        </div>
+            <div className="font-mono font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100">
+              {result.slopeInterceptEq}
+            </div>
+          </>
+        ) : status === 'invalid' ? (
+          <div className="flex items-center gap-2 text-rose-600 font-medium">
+            <AlertTriangle className="h-4 w-4" />
+            <span>{lang === 'zh' ? '输入存在格式错误，请检查标红的输入框' : 'Invalid input detected. Please correct highlighted fields.'}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-slate-500 font-medium">
+            <Edit3 className="h-4 w-4 text-indigo-500" />
+            <span>{lang === 'zh' ? '请填写完整四项坐标数值以绘制函数图象' : 'Please fill all coordinate fields to plot the graph.'}</span>
+          </div>
+        )}
       </div>
     </div>
   );
-};
+});
+
+CoordinatePlane.displayName = 'CoordinatePlane';
